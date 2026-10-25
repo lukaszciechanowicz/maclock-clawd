@@ -1,0 +1,742 @@
+{
+  "version": 1,
+  "origin": "https://claude.dev/",
+  "animations": {
+    "wave": {
+      "fps": 12,
+      "frames": 17,
+      "frame_size": [
+        180,
+        158
+      ],
+      "columns": 8,
+      "offset": [
+        -90,
+        -155
+      ],
+      "decoded_bytes": 2730240,
+      "file": "wave.png",
+      "source": "https://claude.dev/shared/video/clawd-waving.json",
+      "source_sha256": "bf254d9670db5a869249ffb8682b0d805d364a6c9208fc1fde1cbebed687b9b0",
+      "mode": "pingpong"
+    },
+    "looking": {
+      "fps": 12,
+      "frames": 42,
+      "frame_size": [
+        180,
+        121
+      ],
+      "columns": 8,
+      "offset": [
+        -90,
+        -119
+      ],
+      "decoded_bytes": 4181760,
+      "file": "looking.png",
+      "source": "https://claude.dev/shared/video/clawd-looking.json",
+      "source_sha256": "2844f8478106985f50c43c316325ca161d5d3100a1eb6db4fea43f0768d57e01"
+    },
+    "walking": {
+      "fps": 12,
+      "frames": 28,
+      "frame_size": [
+        180,
+        136
+      ],
+      "columns": 8,
+      "offset": [
+        -90,
+        -133
+      ],
+      "decoded_bytes": 3133440,
+      "file": "walking.png",
+      "source": "https://claude.dev/shared/video/clawd-walking.json",
+      "source_sha256": "4ff6404404a9ad5aa12e85a8b4dc15c6e7b110444b495b79d6ff61a0f7230044",
+      "loop": [
+        8,
+        24
+      ]
+    },
+    "bounce": {
+      "fps": 12,
+      "frames": 21,
+      "frame_size": [
+        157,
+        194
+      ],
+      "columns": 8,
+      "offset": [
+        -78,
+        -192
+      ],
+      "decoded_bytes": 2923968,
+      "file": "bounce.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Jumping.json",
+      "source_sha256": "12fd95743d9fa46dc33dfa0b250c6ce20586b074e7a64a5a14460cb94c4a7754"
+    },
+    "thinking": {
+      "fps": 12,
+      "frames": 38,
+      "frame_size": [
+        162,
+        194
+      ],
+      "columns": 8,
+      "offset": [
+        -81,
+        -192
+      ],
+      "decoded_bytes": 5028480,
+      "file": "thinking.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Thinking.json",
+      "source_sha256": "446d0cd16f28422233f38e9ce2417791fddc29d9ca9ffea3154ea7a888092597"
+    },
+    "laptop": {
+      "fps": 12,
+      "frames": 43,
+      "frame_size": [
+        254,
+        172
+      ],
+      "columns": 8,
+      "offset": [
+        -90,
+        -170
+      ],
+      "decoded_bytes": 8388096,
+      "file": "laptop.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Laptop.json",
+      "source_sha256": "0514f7df367ef9a16ff0524eabdd0a39483377bc07dba2f3cb82f357cb7417e4"
+    },
+    "phone": {
+      "fps": 12,
+      "frames": 89,
+      "frame_size": [
+        202,
+        143
+      ],
+      "columns": 8,
+      "offset": [
+        -104,
+        -141
+      ],
+      "decoded_bytes": 11092224,
+      "file": "phone.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Phone.json",
+      "source_sha256": "463aef51abc99cbc01fd7f04efec3fa345b0eba205a134415deca8e6306c7818"
+    },
+    "desktop": {
+      "fps": 12,
+      "frames": 88,
+      "frame_size": [
+        268,
+        121
+      ],
+      "columns": 8,
+      "offset": [
+        -90,
+        -119
+      ],
+      "decoded_bytes": 11414656,
+      "file": "desktop.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Desktop.json",
+      "source_sha256": "5e736e1acfa042169cd9e12047dd0e352b6f1d1815fe186457b031fdaf58455c"
+    },
+    "notebook": {
+      "fps": 12,
+      "frames": 81,
+      "frame_size": [
+        218,
+        122
+      ],
+      "columns": 8,
+      "offset": [
+        -97,
+        -119
+      ],
+      "decoded_bytes": 9361792,
+      "file": "notebook.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Notebook.json",
+      "source_sha256": "02e7bc52860cf77df0fb374d791f018309802008a425d84dcf9afbd289032184"
+    },
+    "headphones": {
+      "fps": 12,
+      "frames": 74,
+      "frame_size": [
+        224,
+        187
+      ],
+      "columns": 8,
+      "offset": [
+        -119,
+        -185
+      ],
+      "decoded_bytes": 13404160,
+      "file": "headphones.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Headphones.json",
+      "source_sha256": "1c1b993a556007f7841f5267be7b1bcd9184a8005d7641b96f2206d2f39d8bc4"
+    },
+    "watch": {
+      "fps": 12,
+      "frames": 87,
+      "frame_size": [
+        210,
+        129
+      ],
+      "columns": 8,
+      "offset": [
+        -104,
+        -126
+      ],
+      "decoded_bytes": 9535680,
+      "file": "watch.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Watch.json",
+      "source_sha256": "572a3e0b603e642a12da85412ed332e42176c579b13fa7e573aa64667628ae05"
+    },
+    "turning": {
+      "fps": 12,
+      "frames": 29,
+      "frame_size": [
+        180,
+        129
+      ],
+      "columns": 8,
+      "offset": [
+        -90,
+        -126
+      ],
+      "decoded_bytes": 2972160,
+      "file": "turning.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Turning.json",
+      "source_sha256": "ab372520e2d4305f081cf5ace9cbf322283996c59714974604bcb4a19003d109"
+    },
+    "sleeping": {
+      "fps": 12,
+      "frames": 55,
+      "frame_size": [
+        195,
+        172
+      ],
+      "columns": 8,
+      "offset": [
+        -90,
+        -170
+      ],
+      "decoded_bytes": 7512960,
+      "file": "sleeping.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Snooze.json",
+      "source_sha256": "10d6eac110c7f0694aecc36a2c32668fae6305a0ba47fca45c5d90133a684ef9"
+    },
+    "lightbulb": {
+      "fps": 12,
+      "frames": 50,
+      "frame_size": [
+        148,
+        194
+      ],
+      "columns": 8,
+      "offset": [
+        -73,
+        -192
+      ],
+      "decoded_bytes": 6431488,
+      "file": "lightbulb.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Lightbulb.json",
+      "source_sha256": "548fb0a8520bf7e7ffdddf8e18e4cab1e053af2b9f9685cc2281bb4814de9c1c"
+    },
+    "spark": {
+      "fps": 12,
+      "frames": 73,
+      "frame_size": [
+        220,
+        194
+      ],
+      "columns": 8,
+      "offset": [
+        -76,
+        -192
+      ],
+      "decoded_bytes": 13657600,
+      "file": "spark.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Spark.json",
+      "source_sha256": "48d30f3f83b9b59e6416ae778311236e89f1bfb134f46d0b1d95caf2b5c36052"
+    },
+    "swaying": {
+      "fps": 12,
+      "frames": 49,
+      "frame_size": [
+        210,
+        129
+      ],
+      "columns": 8,
+      "offset": [
+        -104,
+        -126
+      ],
+      "decoded_bytes": 6068160,
+      "file": "swaying.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Swaying.json",
+      "source_sha256": "1a0d5d23aec67f91f4a36f4ef4b62ea248f63f223926d4d1a09858c0a8e7ee2e"
+    },
+    "juggling": {
+      "fps": 12,
+      "frames": 54,
+      "frame_size": [
+        153,
+        194
+      ],
+      "columns": 8,
+      "offset": [
+        -79,
+        -192
+      ],
+      "decoded_bytes": 6648768,
+      "file": "juggling.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Juggling.json",
+      "source_sha256": "e2d44502476cb7579687a3fce10bc41d202e05a8553cd05709a8649f314fcbd9"
+    },
+    "hula_hoop": {
+      "fps": 12,
+      "frames": 75,
+      "frame_size": [
+        239,
+        165
+      ],
+      "columns": 8,
+      "offset": [
+        -119,
+        -163
+      ],
+      "decoded_bytes": 12619200,
+      "file": "hula_hoop.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-HulaHoop.json",
+      "source_sha256": "369bca364cb10240fd46b134d9e6634232fb7c49be079dc7425c0c2bb131e2a2"
+    },
+    "bubble": {
+      "fps": 12,
+      "frames": 100,
+      "frame_size": [
+        218,
+        195
+      ],
+      "columns": 8,
+      "offset": [
+        -71,
+        -192
+      ],
+      "decoded_bytes": 17684160,
+      "file": "bubble.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Bubble.json",
+      "source_sha256": "129593d204b62f4d79e6dd640df87224b78d0727ba7a677dbb9d9482574dd4d6"
+    },
+    "fishing": {
+      "fps": 12,
+      "frames": 109,
+      "frame_size": [
+        211,
+        194
+      ],
+      "columns": 8,
+      "offset": [
+        -81,
+        -192
+      ],
+      "decoded_bytes": 18338432,
+      "file": "fishing.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Fishing.json",
+      "source_sha256": "bbb4c497221a6ce2718c59849f51adb24b048e397c56b77cb8683804fdb1d56d"
+    },
+    "watering": {
+      "fps": 12,
+      "frames": 137,
+      "frame_size": [
+        262,
+        173
+      ],
+      "columns": 8,
+      "offset": [
+        -90,
+        -171
+      ],
+      "decoded_bytes": 26107776,
+      "file": "watering.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Watering.json",
+      "source_sha256": "ab03f851c9ab350030fa66ac67d43bf468bc2626ff4cf53f4e8791427771e694"
+    },
+    "berry_picking": {
+      "fps": 12,
+      "frames": 142,
+      "frame_size": [
+        202,
+        166
+      ],
+      "columns": 8,
+      "offset": [
+        -112,
+        -163
+      ],
+      "decoded_bytes": 19314432,
+      "file": "berry_picking.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-BerryPicking.json",
+      "source_sha256": "e20eacb98055eae3221433a7d81b5229bdd3ad7de745c87910b4487da0123f69"
+    },
+    "blooming": {
+      "fps": 12,
+      "frames": 99,
+      "frame_size": [
+        335,
+        136
+      ],
+      "columns": 8,
+      "offset": [
+        -170,
+        -134
+      ],
+      "decoded_bytes": 18952960,
+      "file": "blooming.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Blooming.json",
+      "source_sha256": "fd3a2e3f03dd0da69e828811439095e13ca687c673cef68690b773463f671e8d"
+    },
+    "rainbow": {
+      "fps": 12,
+      "frames": 84,
+      "frame_size": [
+        247,
+        195
+      ],
+      "columns": 8,
+      "offset": [
+        -117,
+        -192
+      ],
+      "decoded_bytes": 16954080,
+      "file": "rainbow.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Rainbow.json",
+      "source_sha256": "8f071e5c3504405cc2037a06062ddea1c6f590bef2f4ad8210ce7033eb85e5e5"
+    },
+    "rose": {
+      "fps": 12,
+      "frames": 41,
+      "frame_size": [
+        254,
+        187
+      ],
+      "columns": 8,
+      "offset": [
+        -90,
+        -185
+      ],
+      "decoded_bytes": 9119616,
+      "file": "rose.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Rose.json",
+      "source_sha256": "44f2ccb30aa176ce72102c670a763f549fb54f5e368c88a47717fedf18e5a586"
+    },
+    "heart": {
+      "fps": 12,
+      "frames": 22,
+      "frame_size": [
+        128,
+        194
+      ],
+      "columns": 8,
+      "offset": [
+        -64,
+        -192
+      ],
+      "decoded_bytes": 2383872,
+      "file": "heart.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Heart.json",
+      "source_sha256": "dbf98411d9327c659269b5728aca15874364e2395e7f33f4d1c19ce0bc1e8642"
+    },
+    "arcade": {
+      "fps": 12,
+      "frames": 49,
+      "frame_size": [
+        186,
+        139
+      ],
+      "columns": 8,
+      "offset": [
+        -96,
+        -136
+      ],
+      "decoded_bytes": 5791296,
+      "file": "arcade.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Arcade.json",
+      "source_sha256": "8b56d4f2dae0ec77421d4ebe9ccd1c9ec8890f26d4d64289cdf433507336a00e"
+    },
+    "meditating": {
+      "fps": 12,
+      "frames": 60,
+      "frame_size": [
+        180,
+        121
+      ],
+      "columns": 8,
+      "offset": [
+        -90,
+        -119
+      ],
+      "decoded_bytes": 5575680,
+      "file": "meditating.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Meditating.json",
+      "source_sha256": "b1473753efc9e22f18e239371e59072010c000dc19fa54804cea45e8274e77f6"
+    },
+    "excited": {
+      "fps": 12,
+      "frames": 23,
+      "frame_size": [
+        180,
+        129
+      ],
+      "columns": 8,
+      "offset": [
+        -90,
+        -126
+      ],
+      "decoded_bytes": 2229120,
+      "file": "excited.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Excited.json",
+      "source_sha256": "3139b34ce1268507169fea2704513475d0b1398b6e561041f43dd284b3b57447"
+    },
+    "jumping_happy": {
+      "fps": 12,
+      "frames": 21,
+      "frame_size": [
+        157,
+        194
+      ],
+      "columns": 8,
+      "offset": [
+        -78,
+        -192
+      ],
+      "decoded_bytes": 2923968,
+      "file": "jumping_happy.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-JumpingHappy.json",
+      "source_sha256": "f78bd107852e1bd8f551a9a2d0c9f282f92acc6b640ea11ef6df2f07a15edaa7"
+    },
+    "dance": {
+      "fps": 12,
+      "frames": 40,
+      "frame_size": [
+        180,
+        129
+      ],
+      "columns": 8,
+      "offset": [
+        -90,
+        -126
+      ],
+      "decoded_bytes": 3715200,
+      "file": "dance.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Dancing.json",
+      "source_sha256": "3a78c22ead8da91994111cacbbeca6fc8dd93b76f97de678a80b1030fe2c7591"
+    },
+    "confetti": {
+      "fps": 12,
+      "frames": 34,
+      "frame_size": [
+        216,
+        194
+      ],
+      "columns": 8,
+      "offset": [
+        -110,
+        -192
+      ],
+      "decoded_bytes": 6704640,
+      "file": "confetti.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-Confetti.json",
+      "source_sha256": "d5f9f3cf3ced0a5b42efa3a52f82deb7a0b58d685e7bbe9c7a21d3ecf6a9b093"
+    },
+    "dancing_happy": {
+      "fps": 12,
+      "frames": 40,
+      "frame_size": [
+        180,
+        129
+      ],
+      "columns": 8,
+      "offset": [
+        -90,
+        -126
+      ],
+      "decoded_bytes": 3715200,
+      "file": "dancing_happy.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-DancingHappy.json",
+      "source_sha256": "a677048ed573e18084020b3415a4db1e220f116ccc16bf0e2c1884b5aa9597a2"
+    },
+    "breakdancing": {
+      "fps": 12,
+      "frames": 149,
+      "frame_size": [
+        207,
+        194
+      ],
+      "columns": 8,
+      "offset": [
+        -97,
+        -192
+      ],
+      "decoded_bytes": 24416064,
+      "file": "breakdancing.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-BreakDancing.json",
+      "source_sha256": "3055826f9a91df14be4b29dcff4311fe2a1723a6140e87589b53f20d21623814"
+    },
+    "confetti_happy": {
+      "fps": 12,
+      "frames": 34,
+      "frame_size": [
+        216,
+        194
+      ],
+      "columns": 8,
+      "offset": [
+        -110,
+        -192
+      ],
+      "decoded_bytes": 6704640,
+      "file": "confetti_happy.png",
+      "source": "https://claude.dev/shared/video/acts/Clawd-ConfettiHappy.json",
+      "source_sha256": "ef5e245201db96b35c5e6604e4783a1379e2e9afbfb4bec40f3ac32d0d7712a1"
+    },
+    "kite": {
+      "fps": 12,
+      "frames": 101,
+      "frame_size": [
+        189,
+        169
+      ],
+      "columns": 8,
+      "offset": [
+        -60,
+        -167
+      ],
+      "decoded_bytes": 13287456,
+      "file": "kite.png",
+      "source": "https://claude.dev/_next/static/chunks/3o01xgcny9qbw.js",
+      "source_sha256": "b45ebc4241bf8f98efd6bd3637e71930eb2d4d65ef5a16d68684f4d1e1ff20ba"
+    },
+    "pixel_walk": {
+      "fps": 12,
+      "frames": 28,
+      "frame_size": [
+        244,
+        184
+      ],
+      "columns": 8,
+      "offset": [
+        -117,
+        -182
+      ],
+      "decoded_bytes": 5746688,
+      "file": "pixel_walk.png",
+      "source": "https://claude.dev/_next/static/chunks/3o01xgcny9qbw.js",
+      "source_sha256": "b45ebc4241bf8f98efd6bd3637e71930eb2d4d65ef5a16d68684f4d1e1ff20ba"
+    },
+    "skate": {
+      "fps": 12,
+      "frames": 73,
+      "frame_size": [
+        172,
+        178
+      ],
+      "columns": 8,
+      "offset": [
+        -71,
+        -176
+      ],
+      "decoded_bytes": 9797120,
+      "file": "skate.png",
+      "source": "https://claude.dev/_next/static/chunks/3o01xgcny9qbw.js",
+      "source_sha256": "b45ebc4241bf8f98efd6bd3637e71930eb2d4d65ef5a16d68684f4d1e1ff20ba"
+    },
+    "car": {
+      "fps": 12,
+      "frames": 48,
+      "frame_size": [
+        254,
+        169
+      ],
+      "columns": 8,
+      "offset": [
+        -125,
+        -167
+      ],
+      "decoded_bytes": 8241792,
+      "file": "car.png",
+      "source": "https://claude.dev/_next/static/chunks/3o01xgcny9qbw.js",
+      "source_sha256": "b45ebc4241bf8f98efd6bd3637e71930eb2d4d65ef5a16d68684f4d1e1ff20ba"
+    },
+    "scooter": {
+      "fps": 12,
+      "frames": 76,
+      "frame_size": [
+        228,
+        193
+      ],
+      "columns": 8,
+      "offset": [
+        -118,
+        -191
+      ],
+      "decoded_bytes": 14081280,
+      "file": "scooter.png",
+      "source": "https://claude.dev/_next/static/chunks/3o01xgcny9qbw.js",
+      "source_sha256": "b45ebc4241bf8f98efd6bd3637e71930eb2d4d65ef5a16d68684f4d1e1ff20ba"
+    },
+    "bike": {
+      "fps": 12,
+      "frames": 54,
+      "frame_size": [
+        190,
+        178
+      ],
+      "columns": 8,
+      "offset": [
+        -95,
+        -176
+      ],
+      "decoded_bytes": 7575680,
+      "file": "bike.png",
+      "source": "https://claude.dev/_next/static/chunks/3o01xgcny9qbw.js",
+      "source_sha256": "b45ebc4241bf8f98efd6bd3637e71930eb2d4d65ef5a16d68684f4d1e1ff20ba"
+    },
+    "astronaut": {
+      "fps": 12,
+      "frames": 131,
+      "frame_size": [
+        204,
+        169
+      ],
+      "columns": 8,
+      "offset": [
+        -105,
+        -167
+      ],
+      "decoded_bytes": 18754944,
+      "file": "astronaut.png",
+      "source": "https://claude.dev/_next/static/chunks/3o01xgcny9qbw.js",
+      "source_sha256": "b45ebc4241bf8f98efd6bd3637e71930eb2d4d65ef5a16d68684f4d1e1ff20ba"
+    },
+    "pool": {
+      "fps": 12,
+      "frames": 44,
+      "frame_size": [
+        238,
+        190
+      ],
+      "columns": 8,
+      "offset": [
+        -116,
+        -188
+      ],
+      "decoded_bytes": 8682240,
+      "file": "pool.png",
+      "source": "https://claude.dev/_next/static/chunks/3o01xgcny9qbw.js",
+      "source_sha256": "b45ebc4241bf8f98efd6bd3637e71930eb2d4d65ef5a16d68684f4d1e1ff20ba"
+    }
+  }
+}

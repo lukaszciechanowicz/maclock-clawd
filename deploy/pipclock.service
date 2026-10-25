@@ -1,0 +1,22 @@
+[Unit]
+Description=Clawd native landscape desk companion
+After=network.target
+
+[Service]
+Type=simple
+User=pipclock
+Group=pipclock
+WorkingDirectory=/opt/maclock
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/etc/pipclock.env
+# No --preview: native rendering only, with no JPEG encoding.
+ExecStart=/usr/bin/python3 -m pipclock --host 127.0.0.1 --port 8765 --fullscreen
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+UMask=0077
+# Local seat, tty, DRM and input access must be provisioned separately.
+# This unit deliberately does not guess a display driver or force root access.
+
+[Install]
+WantedBy=multi-user.target
