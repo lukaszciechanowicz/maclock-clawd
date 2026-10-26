@@ -1,0 +1,14 @@
+{
+  "aws": {
+    "source": "https://aws.amazon.com/",
+    "source_sha256": "5875cedb89bcec16590d1ca56dfccf8725da931172ce37084973b6c9e4ba18da"
+  },
+  "shipstation": {
+    "source": "https://www.shipstation.com/wp-content/uploads/2026/02/logo-ss-primary-rgb-1-1.svg",
+    "source_sha256": "7903d36837eb60b565e0891c7865bcde326b3b74813b7d8b701d49e6c446dd56"
+  },
+  "stamps": {
+    "source": "https://www.stamps.com/wp-content/uploads/2026/02/logo-stamps-primary-rgb-1-1.svg",
+    "source_sha256": "4f7d5f6ba776f8246bdeea7a9b08eed3b601f80736dcb701957485147a9a11de"
+  }
+}

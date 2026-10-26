@@ -1,12 +1,12 @@
 [Unit]
-Description=Clawd native landscape desk companion
+Description=Maclock Clawd native landscape desk companion
 After=network.target
 
 [Service]
 Type=simple
 User=pipclock
 Group=pipclock
-WorkingDirectory=/opt/maclock
+WorkingDirectory=/opt/maclock-clawd
 Environment=PYTHONUNBUFFERED=1
 EnvironmentFile=-/etc/pipclock.env
 # No --preview: native rendering only, with no JPEG encoding.

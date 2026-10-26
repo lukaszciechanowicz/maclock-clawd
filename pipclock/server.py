@@ -2,10 +2,11 @@
 
 import hmac
 import json
+import re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import threading
-from urllib.parse import urlsplit
+from urllib.parse import parse_qsl, urlsplit
 
 MAX_BODY = 16 * 1024
 
@@ -62,13 +63,66 @@ def create_server(host, port, companion, frames=None, token=None):
                 return False
             return True
 
+        def same_origin_reaction(self):
+            sites = self.headers.get_all("Sec-Fetch-Site", [])
+            if any(site.strip().lower() == "cross-site"
+                   for value in sites for site in value.split(",")):
+                return False
+            origins = self.headers.get_all("Origin", [])
+            if not origins:
+                return True
+            hosts = self.headers.get_all("Host", [])
+            if len(origins) != 1 or len(hosts) != 1:
+                return False
+            try:
+                origin = urlsplit(origins[0])
+                target = urlsplit("http://" + hosts[0])
+                for value in (origin, target):
+                    if (value.scheme != "http" or not value.hostname
+                            or value.username is not None or value.password is not None
+                            or value.path or value.query or value.fragment):
+                        return False
+                origin_port = 80 if origin.port is None else origin.port
+                target_port = 80 if target.port is None else target.port
+                return (origin.hostname, origin_port) == (target.hostname, target_port)
+            except ValueError:
+                return False
+
+        def react(self, query):
+            if not self.authorized():
+                return
+            if not self.same_origin_reaction():
+                self.json_reply(403, {"error": "cross-origin reactions are not allowed"})
+                return
+            try:
+                if re.search(r"%(?![0-9a-fA-F]{2})", query):
+                    raise ValueError("invalid percent escape in query")
+                pairs = parse_qsl(query, keep_blank_values=True, strict_parsing=True,
+                                  errors="strict", max_num_fields=3)
+                parameters = {}
+                for name, value in pairs:
+                    if name not in ("mood", "text", "duration") or name in parameters:
+                        raise ValueError("query parameters must be unique mood, text and optional duration")
+                    parameters[name] = value
+                if "mood" not in parameters or "text" not in parameters:
+                    raise ValueError("mood and text query parameters are required")
+                duration = float(parameters["duration"]) if "duration" in parameters else 8
+                companion.react(parameters["mood"], parameters["text"], duration)
+            except (ValueError, UnicodeError) as error:
+                self.json_reply(400, {"error": str(error)})
+                return
+            self.json_reply(200, companion.snapshot())
+
         def do_GET(self):
-            path = urlsplit(self.path).path
+            request = urlsplit(self.path)
+            path = request.path
             if path == "/health":
                 self.json_reply(200, {"status": "ok", "preview": frames is not None})
             elif path == "/api/state":
                 if self.authorized():
                     self.json_reply(200, companion.snapshot())
+            elif path == "/api/react":
+                self.react(request.query)
             elif path == "/" and preview:
                 self.reply(200, preview, "text/html; charset=utf-8")
             elif path == "/frame.jpg" and frames:

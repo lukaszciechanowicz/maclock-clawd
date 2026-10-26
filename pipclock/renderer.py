@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime
 import math
 import unicodedata
+from pathlib import Path
 
 import pygame
 
@@ -50,6 +51,11 @@ STATUS = {
     "deal_with_it": ("STAY COOL", "Cool under pressure.", "A little confidence, right on cue."),
     "closeup": ("UP CLOSE", "A friendly closer look.", "Just two eyes and a little smile."),
     "heart_eyes": ("ALL HEART", "A little love for your day.", "Two tiny hearts. One happy companion."),
+    "flag_pl": ("WHITE AND RED", "A little wave for Poland.", "Two familiar colors. A warm hello."),
+    "flag_aws": ("BUILDING IN THE CLOUD", "Flying the AWS flag.", "Big ideas start with a little curiosity."),
+    "flag_shipstation": ("READY TO SHIP", "Flying the ShipStation flag.", "Good things are on their way."),
+    "flag_stamps": ("SIGNED, SEALED, SENT", "Flying the Stamps.com flag.", "A little postage. A lot of possibility."),
+    "cloud_engineering": ("CLOUD ENGINEERING", "Built with a little heart.", "Happy hearts. Thoughtful engineering."),
 }
 
 
@@ -60,7 +66,8 @@ for _state, _action in WEBSITE_ACTIONS.items():
 class Renderer:
     """Draw onto a logical 640 × 480 surface without creating a display.
 
-    Background, fonts, labels, clock and the most recent message are cached.
+    Background, fonts, labels, clock and flag frames are cached. Overhead
+    captions and bottom notes maintain independent text-layout caches.
     Character motion uses native-size primitives, never supersampled frames.
     """
 
@@ -71,9 +78,14 @@ class Renderer:
         unicode_path = pygame.font.match_font(
             "notosanscjksc,notosanscjk,hiraginosans,pingfangsc,arialunicode,dejavusans,arial"
         )
-        self.message_fonts = {size: pygame.font.Font(unicode_path, size) for size in range(12, 25)}
+        self.message_fonts = {size: pygame.font.Font(unicode_path, size) for size in range(10, 29)}
         self.website = WebsiteAnimations()
         self.background = self._background()
+        self._scene_rect = pygame.Rect(26, 153, 588, 205)
+        self._caption_canvas = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        self._caption_canvas.set_clip(self._scene_rect)
+        self._caption_view = self._caption_canvas.subsurface(self._scene_rect)
+        self._caption_scaled = pygame.Surface((440, 154), pygame.SRCALPHA)
         self.status_text = {
             state: (self._text(eyebrow, 16, TEAL), self._fit_label(title, 32, 550), self._text(subtitle, 18, MUTED))
             for state, (eyebrow, title, subtitle) in STATUS.items()
@@ -83,6 +95,8 @@ class Renderer:
         self._message_key = None
         self._message_surface = None
         self._message_label = self._text("A NOTE FOR YOU", 16, TEAL)
+        self._caption_key = None
+        self._caption_surface = None
         self._ok_text = self._text("OK!", 24, TEAL)
         self._tap_text = self._text("tap tap", 16, TEAL)
         self._deal_text = self._text("Deal with it.", 26, INK)
@@ -91,6 +105,7 @@ class Renderer:
         self._lens = self._lens_graphic()
         self._glasses = self._glasses_graphic()
         self._heart_morph, self._heart_pulse = self._heart_graphics()
+        self._flags = self._flag_graphics()
 
     def _text(self, text, size, color=INK):
         return self.fonts[size].render(text, True, color)
@@ -200,6 +215,48 @@ class Renderer:
         self._message_key, self._message_surface = message, rendered
         return rendered
 
+    def _caption(self, text):
+        """Cache overhead text independently of the bottom note."""
+        if text == self._caption_key:
+            return self._caption_surface
+        clean = "".join(
+            "\ufffd" if 0xD800 <= ord(c) <= 0xDFFF else
+            " " if unicodedata.category(c) == "Cc" and c != "\n" else c
+            for c in text
+        )
+        clean = "\n".join(line for line in clean.split("\n") if line.strip()) or " "
+        width, height = 558, 40
+        for size in range(28, 9, -1):
+            font = self.message_fonts[size]
+            lines = self._wrap(clean, font, width)
+            line_height = font.get_linesize()
+            if len(lines) * line_height <= height and all(font.size(line)[0] <= width for line in lines):
+                break
+        else:
+            # Dense text still retains every character; only its changed layout
+            # is scaled, never the animation frame or the bottom-message cache.
+            lines = self._wrap(" ".join(clean.split()), font, width)
+        content_width = max(1, max(font.size(line)[0] for line in lines))
+        content = pygame.Surface((content_width, max(1, len(lines) * line_height)), pygame.SRCALPHA)
+        for index, line in enumerate(lines):
+            image = font.render(line, True, INK)
+            content.blit(image, ((content_width - image.get_width()) // 2, index * line_height))
+        if content.get_width() > width or content.get_height() > height:
+            ratio = min(width / content.get_width(), height / content.get_height())
+            content = pygame.transform.smoothscale(
+                content, (max(1, round(content.get_width() * ratio)), max(1, round(content.get_height() * ratio)))
+            )
+        # Mask only the scene header, including its decorative dotted label.
+        rendered = pygame.Surface((586, 49))
+        rendered.fill(SCENE)
+        bubble_width = max(100, content.get_width() + 24)
+        bubble = pygame.Rect((586 - bubble_width) // 2, 1, bubble_width, 48)
+        pygame.draw.rect(rendered, CREAM, bubble, border_radius=8)
+        pygame.draw.rect(rendered, LINE, bubble, 1, border_radius=8)
+        rendered.blit(content, ((586 - content.get_width()) // 2, (49 - content.get_height()) // 2))
+        self._caption_key, self._caption_surface = text, rendered
+        return rendered
+
     def _clock(self, surface, wall_time):
         key = wall_time.strftime("%Y-%m-%d %H:%M:%S")
         if key != self._clock_key:
@@ -295,6 +352,45 @@ class Renderer:
             pulse.append(image)
         return tuple(morph), tuple(pulse)
 
+    @staticmethod
+    def _flag_graphics():
+        """Load official marks once and bake native-size fluttering cloth."""
+        flags = {}
+        brand_path = Path(__file__).with_name("assets") / "brands"
+        for name in ("pl", "aws", "shipstation", "stamps"):
+            polish = name == "pl"
+            width, height = (128, 80) if polish else (144, 64)
+            cloth = pygame.Surface((width, height), pygame.SRCALPHA)
+            cloth.fill((255, 255, 255))
+            if polish:
+                # Poland's official 5:8 field, white above Polish crimson.
+                pygame.draw.rect(cloth, (220, 20, 60), (0, height // 2, width, height // 2))
+            else:
+                logo = pygame.image.load(str(brand_path / (name + ".png")))
+                ratio = min((width - 16) / logo.get_width(), (height - 14) / logo.get_height())
+                logo = pygame.transform.smoothscale(
+                    logo, (max(1, round(logo.get_width() * ratio)), max(1, round(logo.get_height() * ratio)))
+                )
+                cloth.blit(logo, ((width - logo.get_width()) // 2, (height - logo.get_height()) // 2))
+            pygame.draw.rect(cloth, LINE, cloth.get_rect(), 1)
+            strips = tuple(cloth.subsurface((column, 0, 2, height)) for column in range(0, width, 2))
+            frames = []
+            for index in range(24):
+                phase = index * math.tau / 24
+                sway = round(math.sin(phase) * (8 if polish else 1))
+                heave = round(math.sin(phase) * (3 if polish else 1))
+                image = pygame.Surface((190, 142), pygame.SRCALPHA)
+                top = (12 + sway, 10 + heave)
+                pygame.draw.lines(image, TEAL, False, (top, (12, 75), (12 - round(sway * 0.6), 128)), 4)
+                pygame.draw.circle(image, GOLD, top, 3)
+                for column, strip in enumerate(strips):
+                    fraction = column * 2 / (width - 2)
+                    flutter = round(math.sin(phase - fraction * math.tau) * fraction * (8 if polish else 2))
+                    image.blit(strip, (top[0] + 2 + column * 2, top[1] + 4 + flutter))
+                frames.append(image)
+            flags["flag_" + name] = tuple(frames)
+        return flags
+
     def _character(self, surface, state, t):
         # Website poses are real bundled frames; custom timing is independent.
         if self.website.draw(surface, state, t):
@@ -386,6 +482,16 @@ class Renderer:
             happy = 7 <= phase < 11.2
         elif state == "heart_eyes":
             gaze_x = gaze_y = 0
+        elif state in self._flags:
+            # The existing right-side block holds the pole; it is replaced,
+            # not supplemented with a thin arm or an extra hand.
+            y = 280 + round(math.sin(t * math.pi) * (3 if state == "flag_pl" else 1))
+            lift = round(math.sin(t * math.pi) * (6 if state == "flag_pl" else 1))
+            front_right = (68, -40 - lift, 20, 43 + lift)
+            gaze_x = 2
+        elif state == "cloud_engineering":
+            gaze_x = gaze_y = 0
+            y = 276 - round(abs(math.sin(t * math.pi * 1.5)) * 8)
 
         def point(p):
             return round(x + p[0] * sx), round(y + p[1] * sy)
@@ -430,7 +536,7 @@ class Renderer:
         blink = 4.7 < t % 5.4 < 4.9
         for eye_x in (-48, 48):
             ex, ey = eye_x + gaze_x, -23 + gaze_y
-            if state == "heart_eyes":
+            if state in ("heart_eyes", "cloud_engineering"):
                 image = self._heart_morph[frame] if frame < len(self._heart_morph) else self._heart_pulse[(frame - len(self._heart_morph)) % len(self._heart_pulse)]
                 px, py = point((ex, ey))
                 surface.blit(image, (px - 21, py - 21))
@@ -445,6 +551,8 @@ class Renderer:
             else:
                 rect((ex - 8, ey - 9, 16, 18), BLACK)
         # Every custom face is eyes-only, including the startled and cup poses.
+        if state in self._flags:
+            surface.blit(self._flags[state][frame % 24], point((72, -76)))
         if front_left is not None:
             rect(front_left, CORAL)
         if front_right is not None:
@@ -531,8 +639,20 @@ class Renderer:
         # Moving Clawd goes behind the scene's window/bezel, never over the clock
         # or the note. The scared route also passes beyond the full 640 px width.
         previous_clip = surface.get_clip()
-        surface.set_clip(previous_clip.clip(pygame.Rect(26, 153, 588, 205)))
-        self._character(surface, state, elapsed)
+        surface.set_clip(previous_clip.clip(self._scene_rect))
+        caption = snapshot.get("caption")
+        if not caption and state == "cloud_engineering":
+            caption = "Cloud Engineering"
+        if caption:
+            # Reserve a separate caption lane rather than covering raised arms,
+            # jumping eyes or kite props. Reuse both native/scaled canvases.
+            self._caption_canvas.fill((0, 0, 0, 0))
+            self._character(self._caption_canvas, state, elapsed)
+            pygame.transform.scale(self._caption_view, (440, 154), self._caption_scaled)
+            surface.blit(self._caption_scaled, (100, 204))
+            surface.blit(self._caption(str(caption)), (27, 154))
+        else:
+            self._character(surface, state, elapsed)
         surface.set_clip(previous_clip)
         pygame.draw.rect(surface, LINE, (24, 151, 592, 209), 2, border_radius=9)
         message = snapshot.get("message")

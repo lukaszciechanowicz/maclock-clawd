@@ -9,14 +9,18 @@ description = "An animated Clawd companion for a Raspberry Pi landscape desk clo
 requires-python = ">=3.11"
 dependencies = ["pygame==2.6.1"]
 
+[project.urls]
+Repository = "https://github.com/lukaszciechanowicz/maclock-clawd"
+
 [project.optional-dependencies]
 artwork = ["playwright>=1.64,<2"]
+gallery = ["Pillow>=11,<14"]
 
 [project.scripts]
 pipclock = "pipclock.__main__:main"
 
 [tool.setuptools.package-data]
-pipclock = ["preview.html", "assets/*.json", "assets/*.png"]
+pipclock = ["preview.html", "assets/*.json", "assets/*.png", "assets/brands/*.json", "assets/brands/*.png"]
 
 [tool.setuptools.packages.find]
 include = ["pipclock*"]

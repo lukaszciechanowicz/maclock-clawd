@@ -66,6 +66,8 @@ details{font-size:11px;color:var(--muted);margin-top:18px}summary{cursor:pointer
 <button data-event="lens" data-demo-seconds="12">Inspect the room</button><button data-event="ok" data-demo-seconds="8">Give the OK</button><button data-event="scared" data-demo-seconds="8">Startle &amp; run</button>
 <button data-event="phone_ringing" data-demo-seconds="10">Ring &amp; vibrate</button><button data-event="sunglasses" data-demo-seconds="12">Wear sunglasses</button><button data-event="deal_with_it" data-demo-seconds="10">Deal with it.</button>
 <button data-event="closeup" data-demo-seconds="12">Come closer</button><button data-event="heart_eyes" data-demo-seconds="10">Heart eyes</button>
+<button data-event="flag_pl" data-demo-seconds="6">Wave Poland's flag</button><button data-event="flag_aws" data-demo-seconds="6">AWS flag</button><button data-event="flag_shipstation" data-demo-seconds="6">ShipStation flag</button>
+<button data-event="flag_stamps" data-demo-seconds="6">Stamps.com flag</button><button data-event="cloud_engineering" data-demo-seconds="6">Cloud Engineering</button>
 </div>
 <h3>From claude.dev · gestures &amp; focus</h3>
 <div class="buttons">
@@ -104,6 +106,15 @@ details{font-size:11px;color:var(--muted);margin-top:18px}summary{cursor:pointer
 <textarea id="message" rows="2" maxlength="280">Hey, human. Nice work today.</textarea>
 <label for="duration">Display time in seconds</label>
 <div class="row"><input id="duration" type="number" min="0.1" max="3600" step="0.1" value="8"><button id="send">Send a note</button></div>
+<div class="divider"></div>
+<h2>A reaction with words above Clawd</h2>
+<label for="caption-mood">Reaction</label>
+<select id="caption-mood" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:7px;background:#fffef9;color:var(--ink);font:inherit"></select>
+<label for="caption-text">Overhead text · up to 280 characters</label>
+<input id="caption-text" maxlength="280" value="Hello!" autocomplete="off">
+<label for="caption-duration">Reaction and caption time in seconds</label>
+<div class="row"><input id="caption-duration" type="number" min="0.1" max="3600" step="0.1" value="8"><button id="send-caption">Show reaction + caption</button></div>
+<p class="help">Uses GET /api/react?mood=…&amp;text=… . A new action replaces the caption. Use 12 seconds for the full closeup.</p>
 <details><summary>API authentication</summary><label for="token">Bearer token (only if configured; kept in memory)</label><input id="token" type="password" autocomplete="off" spellcheck="false"></details>
 <div class="notice" id="notice" role="status" aria-live="polite">Ready for a little desktop company.</div>
 <div class="footer">NATIVE ARTWORK + BUNDLED WEBSITE FRAMES · PYTHON + SDL<br>This page mirrors the native display. The Pi needs no browser or network for animation.<br>Clawd and website source artwork © Anthropic. Unofficial project.<br>The magnifying glass is pretend: no camera or microphone access.</div>
@@ -117,6 +128,9 @@ const playButton=document.querySelector('#play-demo');
 const stopButton=document.querySelector('#stop-demo');
 const eventButtons=[...document.querySelectorAll('[data-event]')];
 const actionLabels=Object.fromEntries(eventButtons.map(button=>[button.dataset.event,button.textContent]));
+const captionMood=document.querySelector('#caption-mood');
+for(const button of eventButtons){const option=document.createElement('option');option.value=button.dataset.event;option.textContent=button.textContent;captionMood.append(option)}
+captionMood.value='wave';
 const demoSteps=eventButtons.map(button=>({
   event:button.dataset.event,seconds:Number(button.dataset.demoSeconds)
 }));
@@ -160,17 +174,17 @@ scheduleFrame();
 
 // Serialize writes: a manual action always lands after an already-sent demo action.
 // Do not abort on Stop: aborting a fetch cannot undo an event received by the server.
-function api(path,body,shouldSend=()=>true){
+function api(path,body,shouldSend=()=>true,method='POST'){
   const token=document.querySelector('#token').value;
   const request=requestTail.then(async()=>{
     if(!pageActive)throw Error('Page is no longer active.');
     if(!shouldSend())throw Error('Request cancelled.');
-    const headers={'Content-Type':'application/json'};
+    const headers=method==='POST'?{'Content-Type':'application/json'}:{};
     if(token)headers.Authorization='Bearer '+token;
     const controller=new AbortController();
     activeRequest=controller;
     try{
-      const response=await fetch(path,{method:'POST',headers,body:JSON.stringify(body),signal:controller.signal});
+      const response=await fetch(path,{method,headers,body:method==='POST'?JSON.stringify(body):undefined,signal:controller.signal});
       const data=await response.json();
       if(!response.ok)throw Error(data.error||'Request failed ('+response.status+').');
       return data;
@@ -182,6 +196,7 @@ function api(path,body,shouldSend=()=>true){
   return request;
 }
 function highlightAction(event){
+  captionMood.value=event;
   eventButtons.forEach(button=>{
     const active=button.dataset.event===event;
     button.classList.toggle('active',active);
@@ -253,7 +268,21 @@ document.querySelector('#send').onclick=()=>manualRequest('/api/message',{
   text:document.querySelector('#message').value,
   duration:Number(document.querySelector('#duration').value)
 });
-for(const id of ['message','duration','token']){
+document.querySelector('#send-caption').onclick=async()=>{
+  stopDemo();
+  const generation=++manualGeneration;
+  const query=new URLSearchParams({mood:captionMood.value,text:document.querySelector('#caption-text').value,duration:document.querySelector('#caption-duration').value});
+  notice.textContent='Sending the reaction and overhead caption…';
+  try{
+    const data=await api('/api/react?'+query,null,()=>true,'GET');
+    if(generation!==manualGeneration||!pageActive)return;
+    highlightAction(data.state);
+    notice.textContent='Caption delivered · '+actionLabels[data.state];
+  }catch(error){
+    if(generation===manualGeneration&&pageActive)notice.textContent='Request failed: '+error.message;
+  }
+};
+for(const id of ['message','duration','token','caption-mood','caption-text','caption-duration']){
   document.getElementById(id).addEventListener('input',()=>{
     if(demoRunning)stopDemo('Demo stopped while you edit the controls.');
   });
