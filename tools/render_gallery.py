@@ -1,4 +1,4 @@
-"""Export every native Clawd action as a compact, looping README GIF.
+"""Export every native Clawd action as a compact, looping documentation GIF.
 
 Run on a desktop with: pip install -e '.[gallery]'
 The Pi runtime does not need Pillow or these documentation assets.
@@ -7,6 +7,7 @@ The Pi runtime does not need Pillow or these documentation assets.
 import argparse
 from datetime import datetime
 from html import escape
+from html.parser import HTMLParser
 import json
 import math
 import os
@@ -20,7 +21,6 @@ sys.path.insert(0, str(ROOT))
 from PIL import Image
 import pygame
 
-from pipclock.catalog import WEBSITE_ACTIONS
 from pipclock.model import EVENT_DURATIONS
 from pipclock.renderer import HEIGHT, WIDTH, Renderer
 
@@ -35,11 +35,38 @@ CUSTOM_SECONDS = {
     "flag_pl": 6, "flag_aws": 6, "flag_shipstation": 6,
     "flag_stamps": 6, "cloud_engineering": 6,
 }
-CUSTOM_LABELS = {
-    "flag_pl": "Polish flag", "flag_aws": "AWS flag",
-    "flag_shipstation": "ShipStation flag", "flag_stamps": "Stamps.com flag",
-    "cloud_engineering": "Cloud Engineering",
-}
+
+
+class _PreviewGroups(HTMLParser):
+    """Use the preview's categories and labels instead of a second catalog."""
+
+    def __init__(self):
+        super().__init__()
+        self.groups = []
+        self.heading = None
+        self.event = None
+        self.label = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "h3":
+            self.heading = []
+        elif tag == "button":
+            self.event = dict(attrs).get("data-event")
+            self.label = []
+
+    def handle_data(self, data):
+        if self.heading is not None:
+            self.heading.append(data)
+        elif self.event:
+            self.label.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "h3" and self.heading is not None:
+            self.groups.append(("".join(self.heading).strip(), []))
+            self.heading = None
+        elif tag == "button" and self.event:
+            self.groups[-1][1].append((self.event, "".join(self.label).strip()))
+            self.event = None
 
 
 def frame_count(event, entries):
@@ -82,25 +109,30 @@ def export_gif(renderer, surface, event, count, destination):
 
 
 def markdown(output):
-    relative = Path(os.path.relpath(output, ROOT)).as_posix()
-    lines = ["<table>"]
-    events = list(EVENT_DURATIONS)
-    for offset in range(0, len(events), 3):
-        lines.append("  <tr>")
-        for event in events[offset:offset + 3]:
-            label = CUSTOM_LABELS.get(event, WEBSITE_ACTIONS.get(event, {}).get("label", event.replace("_", " ").capitalize()))
-            lines.append(f'    <td align="center" width="33%"><strong>{escape(label)}</strong><br><code>{event}</code><br><img src="{relative}/{event}.gif" alt="Animated Clawd: {escape(label, quote=True)}" width="300" height="225"></td>')
-        for _ in range(3 - len(events[offset:offset + 3])):
-            lines.append('    <td aria-hidden="true"></td>')
-        lines.append("  </tr>")
-    lines.append("</table>")
+    relative = Path(os.path.relpath(output, ROOT / "docs")).as_posix()
+    preview = _PreviewGroups()
+    preview.feed((ROOT / "pipclock" / "preview.html").read_text(encoding="utf-8"))
+    events = [event for _, group in preview.groups for event, _ in group]
+    if len(events) != len(set(events)) or set(events) != set(EVENT_DURATIONS):
+        raise ValueError("Preview/gallery actions do not match the runtime catalog")
+    lines = []
+    for title, group in preview.groups:
+        lines.extend((f"## {title}", "", "<table>"))
+        for offset in range(0, len(group), 3):
+            lines.append("  <tr>")
+            for event, label in group[offset:offset + 3]:
+                lines.append(f'    <td align="center" width="33%"><strong>{escape(label)}</strong><br><code>{event}</code><br><img src="{relative}/{event}.gif" alt="Animated Clawd: {escape(label, quote=True)}" width="300" height="225"></td>')
+            for _ in range(3 - len(group[offset:offset + 3])):
+                lines.append('    <td aria-hidden="true"></td>')
+            lines.append("  </tr>")
+        lines.extend(("</table>", ""))
     return "\n".join(lines)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=ROOT / "docs" / "gallery")
-    parser.add_argument("--print-markdown", action="store_true", help="print a three-column table after exporting")
+    parser.add_argument("--print-markdown", action="store_true", help="print categorized three-column tables for docs/gallery.md")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     entries = json.loads((ROOT / "pipclock" / "assets" / "manifest.json").read_text())["animations"]
