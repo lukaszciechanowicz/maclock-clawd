@@ -19,6 +19,10 @@ def main():
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--fps", type=int, default=24)
     parser.add_argument("--fullscreen", action="store_true")
+    parser.add_argument(
+        "--rotation", type=int, choices=(0, 90, 180, 270), default=0,
+        help="rotate the physical display counterclockwise; preview stays landscape",
+    )
     parser.add_argument("--preview", action="store_true", help="enable the local browser mirror")
     parser.add_argument("--headless", action="store_true", help="mirror only; requires --preview")
     args = parser.parse_args()
@@ -51,7 +55,16 @@ def main():
     server = None
     try:
         flags = pygame.FULLSCREEN if args.fullscreen else 0
-        screen = pygame.display.set_mode((WIDTH, HEIGHT), flags)
+        display_size = (HEIGHT, WIDTH) if args.rotation in (90, 270) else (WIDTH, HEIGHT)
+        screen = pygame.display.set_mode(display_size, flags)
+        if args.fullscreen and not args.headless and screen.get_size() != display_size:
+            actual_width, actual_height = screen.get_size()
+            parser.error(
+                f"fullscreen display is {actual_width}x{actual_height}, "
+                f"but --rotation {args.rotation} requires {display_size[0]}x{display_size[1]}; "
+                "choose a rotation matching the panel dimensions"
+            )
+        canvas = pygame.Surface((WIDTH, HEIGHT)).convert() if args.rotation else screen
         pygame.display.set_caption("Clawd — a little desktop company")
         pygame.mouse.set_visible(not args.fullscreen)
         companion = Companion()
@@ -80,12 +93,14 @@ def main():
                     running = False
                 elif event.type in (pygame.MOUSEBUTTONDOWN, pygame.FINGERDOWN):
                     companion.event("knock")
-            renderer.draw(screen, companion.snapshot(), datetime.now())
+            renderer.draw(canvas, companion.snapshot(), datetime.now())
+            if args.rotation:
+                screen.blit(pygame.transform.rotate(canvas, args.rotation), (0, 0))
             pygame.display.flip()
             now = time.monotonic()
             if frames is not None and now >= next_mirror:
                 buffer = io.BytesIO()
-                pygame.image.save(screen, buffer, "frame.jpg")
+                pygame.image.save(canvas, buffer, "frame.jpg")
                 frames.put(buffer.getvalue())
                 next_mirror = now + 1 / 12
             ticker.tick(args.fps)
