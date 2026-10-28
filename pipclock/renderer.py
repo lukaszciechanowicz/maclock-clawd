@@ -10,7 +10,7 @@ from pathlib import Path
 import pygame
 
 from .animations import WebsiteAnimations
-from .model import EVENT_DURATIONS
+from .model import DEFAULT_TEXT_SIZE, EVENT_DURATIONS
 
 
 WIDTH, HEIGHT = 640, 480
@@ -47,9 +47,11 @@ class Renderer:
         unicode_path = pygame.font.match_font(
             "notosanscjksc,notosanscjk,hiraginosans,pingfangsc,arialunicode,dejavusans,arial"
         )
-        self.message_fonts = {size: pygame.font.Font(unicode_path, size) for size in range(12, 33)}
+        self._unicode_path = unicode_path
+        self.message_fonts = {}
         self.website = WebsiteAnimations()
         self._art_rect = pygame.Rect(0, 168, WIDTH, HEIGHT - 168)
+        self._header_rect = pygame.Rect(32, 42, 576, 120)
         self._clock_key = None
         self._clock_text = None
         self._header_key = None
@@ -99,73 +101,40 @@ class Renderer:
         surface.blit(image, (round(x - image.get_width() / 2), round(y)))
 
 
-    @staticmethod
-    def _clusters(text):
-        """Keep combining marks, variation selectors and ZWJ sequences together."""
-        clusters = []
-        for character in text:
-            if clusters and (unicodedata.combining(character) or character in "\ufe0e\ufe0f\u200d" or clusters[-1].endswith("\u200d")):
-                clusters[-1] += character
-            else:
-                clusters.append(character)
-        return clusters
-
-    def _wrap(self, text, font, width):
-        lines = []
-        for paragraph in text.split("\n"):
-            current = []
-            for cluster in self._clusters(paragraph):
-                candidate = "".join(current) + cluster
-                if current and font.size(candidate)[0] > width:
-                    gap = next((i for i in range(len(current) - 1, -1, -1) if current[i].isspace()), -1)
-                    if gap > 0:
-                        lines.append("".join(current[:gap]).rstrip())
-                        current = current[gap + 1:]
-                        while current and font.size("".join(current) + cluster)[0] > width:
-                            lines.append("".join(current))
-                            current = []
-                    else:
-                        lines.append("".join(current).rstrip())
-                        current = []
-                if current or not cluster.isspace():
-                    current.append(cluster)
-            lines.append("".join(current).rstrip())
-        return lines
-
-    def _header(self, text):
-        """Wrap the complete Unicode note, sharing one plain header lane."""
-        if text == self._header_key:
-            return self._header_surface
-        clean = "".join(
-            "\ufffd" if 0xD800 <= ord(c) <= 0xDFFF else
-            " " if unicodedata.category(c) == "Cc" and c != "\n" else c
-            for c in text
-        )
-        clean = "\n".join(line for line in clean.split("\n") if line.strip()) or " "
-        width, height = 576, 108
-        for size in range(32, 11, -1):
-            font = self.message_fonts[size]
-            lines = self._wrap(clean, font, width)
-            line_height = font.get_linesize()
-            if len(lines) * line_height <= height and all(font.size(line)[0] <= width for line in lines):
-                break
-        else:
-            # Excessive explicit newlines must not make 280 characters tiny.
-            lines = self._wrap(" ".join(clean.split()), font, width)
-        content_width = max(1, max(font.size(line)[0] for line in lines))
-        content = pygame.Surface((content_width, max(1, len(lines) * line_height)), pygame.SRCALPHA)
-        for index, line in enumerate(lines):
-            image = font.render(line, True, INK)
-            content.blit(image, ((content_width - image.get_width()) // 2, index * line_height))
-        if content.get_width() > width or content.get_height() > height:
-            ratio = min(width / content.get_width(), height / content.get_height())
-            content = pygame.transform.smoothscale(
-                content, (max(1, round(content.get_width() * ratio)), max(1, round(content.get_height() * ratio)))
+    def _header(self, text, text_size):
+        """Cache the full-size Unicode line, leaving movement to clipped blits."""
+        key = (text, text_size)
+        if key != self._header_key:
+            clean = "".join(
+                "\ufffd" if 0xD800 <= ord(c) <= 0xDFFF else
+                " " if unicodedata.category(c) == "Cc" else c
+                for c in text
             )
-        rendered = pygame.Surface((width, height), pygame.SRCALPHA)
-        rendered.blit(content, ((width - content.get_width()) // 2, height - content.get_height()))
-        self._header_key, self._header_surface = text, rendered
-        return rendered
+            font = self.message_fonts.get(text_size)
+            if font is None:
+                font = pygame.font.Font(self._unicode_path, text_size)
+                self.message_fonts[text_size] = font
+            self._header_surface = font.render(clean, True, INK)
+            self._header_key = key
+        return self._header_surface
+
+    def _draw_header(self, surface, text, text_size, elapsed):
+        image = self._header(text, text_size)
+        lane = self._header_rect
+        y = lane.centery - image.get_height() // 2
+        previous_clip = surface.get_clip()
+        surface.set_clip(previous_clip.clip(lane))
+        if image.get_width() <= lane.width:
+            surface.blit(image, (lane.centerx - image.get_width() // 2, y))
+        else:
+            distance = max(0.0, float(elapsed)) * 100
+            period = image.get_width() + 64
+            x = lane.right - round(distance % period)
+            surface.blit(image, (x, y))
+            if distance >= period:
+                # The previous copy's tail remains visible as the next enters.
+                surface.blit(image, (x - period, y))
+        surface.set_clip(previous_clip)
 
     def _clock(self, surface, wall_time):
         key = wall_time.strftime("%H:%M")
@@ -525,10 +494,10 @@ class Renderer:
         wifi_status: str = "unavailable",
     ) -> None:
         """Draw a frame from cached network status and monotonic action time."""
-        state = snapshot.get("state", "idle")
+        state = snapshot.get("animation", snapshot.get("state", "idle"))
         if state not in EVENT_DURATIONS:
             state = "idle"
-        elapsed = max(0.0, float(snapshot.get("elapsed", 0.0)))
+        elapsed = max(0.0, float(snapshot.get("animation_elapsed", snapshot.get("elapsed", 0.0))))
         surface.fill(PAPER)
         previous_clip = surface.get_clip()
         # Protect the plain header while preserving deliberate close-up crops
@@ -536,8 +505,16 @@ class Renderer:
         surface.set_clip(previous_clip.clip(self._art_rect))
         self._character(surface, state, elapsed)
         surface.set_clip(previous_clip)
-        header = snapshot.get("caption") or snapshot.get("message")
+        header = snapshot.get("caption")
+        text_size = snapshot.get("caption_text_size", DEFAULT_TEXT_SIZE)
+        text_elapsed = snapshot.get("caption_elapsed", 0.0)
         if not header:
+            header = snapshot.get("message")
+            text_size = snapshot.get("message_text_size", DEFAULT_TEXT_SIZE)
+            text_elapsed = snapshot.get("message_elapsed", 0.0)
+        if not header:
+            text_size = DEFAULT_TEXT_SIZE
+            text_elapsed = elapsed
             if state == "cloud_engineering":
                 header = "Cloud Engineering"
             elif state == "deal_with_it" and elapsed >= 1.5:
@@ -545,7 +522,7 @@ class Renderer:
             elif state == "ok":
                 header = "OK!"
         if header:
-            surface.blit(self._header(str(header)), (32, 42))
+            self._draw_header(surface, str(header), text_size, text_elapsed)
         else:
             self._clock(surface, wall_time)
         surface.blit(self._wifi.get(wifi_status, self._wifi["unavailable"]), (WIDTH - 40, 14))

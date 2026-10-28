@@ -33,6 +33,8 @@ Keep the process running; stop it with Ctrl-C. If the browser reports `ERR_CONNE
 - Custom block-shaped poses sit alongside bundled frames from claude.dev. The side rectangles are Clawd's arms.
 - A larger, consistently terracotta Clawd sits near the bottom of a flat sand background; no frame, date, slogans or lower status panel.
 - The raised calculator-style clock uses bundled DSEG7 Classic digits and shows only hours and minutes. API captions and timed messages replace it above Clawd without shrinking the artwork; reaction captions take priority over timed messages.
+- API text defaults to 64 px, configurable per request with `text_size` from 32–96 px. Short lines stay centered; overflow scrolls right to left at full size instead of becoming tiny.
+- Idle rotates through standing, pool float, skateboard, headphones, sleeping, reading, coffee, kite and swaying every 30 seconds. Configure the ordered group and interval through `GET`/`POST /api/idle`; explicit actions interrupt it and idle resumes on expiry.
 - A small top-right Wi-Fi icon distinguishes connected, disconnected and unavailable radios. Linux link state refreshes every two seconds without Internet probes; this indicates Wi-Fi association, not Internet availability. Desktop previews without Linux sysfs show the unavailable icon.
 - The optional browser mirror shows the same native frames. The magnifying-glass animation uses no camera or microphone.
 
@@ -43,6 +45,8 @@ Clawd and website artwork © Anthropic. Unofficial project; brand marks belong t
 The unit expects the source in `/opt/maclock-clawd`, distro `python3-pygame` 2.6.1, `libgbm1`, `libegl1`, `libgles2`, `libgl1-mesa-dri`, `fontconfig` and `fonts-dejavu-core`. Its `pipclock` system account needs the `video`, `render` and `input` groups; the service takes over `tty1` from getty.
 
 The service defaults to loopback. For direct LAN requests without SSH, set `PIPCLOCK_HOST=0.0.0.0` and a strong `PIPCLOCK_TOKEN` in the root-readable `/etc/pipclock.env`, then restart the service. Clients use the Pi's IP and a bearer header; see [LAN setup and examples](docs/api.md#direct-lan-access-on-raspberry-pi). The browser preview remains local-only.
+
+The native service saves idle settings in `/var/lib/pipclock/idle.json` using its private systemd state directory. Desktop settings remain in-memory unless `PIPCLOCK_IDLE_CONFIG` is set. See [idle configuration](docs/api.md#idle-playlist) and the [text API](docs/api.md#reaction--overhead-text) for bounds and examples.
 
 The unit explicitly selects `SDL_FRAMEBUFFER_ACCELERATION=opengles2` for VC4. SDL's automatic desktop OpenGL framebuffer renderer can otherwise produce an all-black scanout despite a healthy API and a correctly drawn CPU-side surface; verify the actual DRM framebuffer when diagnosing a blank panel.
 

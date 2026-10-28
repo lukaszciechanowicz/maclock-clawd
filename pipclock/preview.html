@@ -35,6 +35,7 @@ button.active{background:var(--ink);color:var(--paper);border-color:var(--ink)}b
 label{display:block;font-size:11px;color:var(--muted);margin:12px 0 5px}
 textarea,input{width:100%;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:#fffef9;color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:10px}textarea{resize:vertical;min-height:80px}
 .row{display:flex;gap:9px;margin-top:8px}.row input{width:95px}.row button{flex:1;background:var(--soft)}
+.idle-actions{width:100%;padding:8px;border:1px solid var(--line);border-radius:7px;background:#fffef9;color:var(--ink);font:inherit}.idle-actions:focus-visible{outline:2px solid var(--orange);outline-offset:3px}
 details{font-size:11px;color:var(--muted);margin-top:18px}summary{cursor:pointer}
 .notice{min-height:40px;font-size:11px;color:var(--ink);margin-top:18px;overflow-wrap:anywhere}
 .footer{font-size:10px;color:var(--muted);border-top:1px solid var(--line);padding-top:15px;margin-top:12px}
@@ -104,18 +105,30 @@ details{font-size:11px;color:var(--muted);margin-top:18px}summary{cursor:pointer
 <h2>Timed text above Clawd</h2>
 <label for="message">Message · up to 280 characters</label>
 <textarea id="message" rows="2" maxlength="280">Hey, human. Nice work today.</textarea>
+<label for="text-size">Text size · 32–96 px</label>
+<input id="text-size" type="number" min="32" max="96" step="1" value="64">
 <label for="duration">Display time in seconds</label>
 <div class="row"><input id="duration" type="number" min="0.1" max="3600" step="0.1" value="8"><button id="send">Send a note</button></div>
-<p class="help">Replaces the clock while visible. A reaction caption takes priority; both timers continue independently.</p>
+<p class="help">Large text replaces the clock. Overflow scrolls right to left without shrinking; allow more time for long notes. A reaction caption takes priority; both timers continue independently.</p>
 <div class="divider"></div>
 <h2>A reaction with words above Clawd</h2>
 <label for="caption-mood">Reaction</label>
 <select id="caption-mood" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:7px;background:#fffef9;color:var(--ink);font:inherit"></select>
 <label for="caption-text">Overhead text · up to 280 characters</label>
 <input id="caption-text" maxlength="280" value="Hello!" autocomplete="off">
+<label for="caption-text-size">Text size · 32–96 px</label>
+<input id="caption-text-size" type="number" min="32" max="96" step="1" value="64">
 <label for="caption-duration">Reaction and caption time in seconds</label>
 <div class="row"><input id="caption-duration" type="number" min="0.1" max="3600" step="0.1" value="8"><button id="send-caption">Show reaction + caption</button></div>
 <p class="help">Uses GET /api/react?mood=…&amp;text=… . A new action replaces the caption. Use 12 seconds for the full closeup.</p>
+<div class="divider"></div>
+<h2>Idle rotation</h2>
+<label for="idle-actions">Idle group · use ⌘/Ctrl-click to select multiple</label>
+<select id="idle-actions" class="idle-actions" multiple size="8"></select>
+<label for="idle-interval">Seconds per idle animation · 5–3600</label>
+<input id="idle-interval" type="number" min="5" max="3600" step="1" value="30">
+<div class="row"><button id="load-idle">Load current</button><button id="save-idle">Save rotation</button></div>
+<p class="help" id="idle-help">Rotation runs only in idle. A single selection holds that animation. Explicit actions interrupt it. Settings persist on a configured Pi.</p>
 <details><summary>API authentication</summary><label for="token">Bearer token (only if configured; kept in memory)</label><input id="token" type="password" autocomplete="off" spellcheck="false"></details>
 <div class="notice" id="notice" role="status" aria-live="polite">Ready.</div>
 <div class="footer">NATIVE ARTWORK + BUNDLED WEBSITE FRAMES · PYTHON + SDL<br>This page mirrors the native display. The Pi needs no browser or network for animation.<br>Clawd and website source artwork © Anthropic. Unofficial project.<br>The magnifying glass is pretend: no camera or microphone access.</div>
@@ -130,7 +143,15 @@ const stopButton=document.querySelector('#stop-demo');
 const eventButtons=[...document.querySelectorAll('[data-event]')];
 const actionLabels=Object.fromEntries(eventButtons.map(button=>[button.dataset.event,button.textContent]));
 const captionMood=document.querySelector('#caption-mood');
-for(const button of eventButtons){const option=document.createElement('option');option.value=button.dataset.event;option.textContent=button.textContent;captionMood.append(option)}
+const idleActions=document.querySelector('#idle-actions');
+let idleOrder=[];
+for(const button of eventButtons){
+  const option=document.createElement('option');
+  option.value=button.dataset.event;
+  option.textContent=button.textContent;
+  captionMood.append(option);
+  idleActions.append(option.cloneNode(true));
+}
 captionMood.value='wave';
 const demoSteps=eventButtons.map(button=>({
   event:button.dataset.event,seconds:Number(button.dataset.demoSeconds)
@@ -267,12 +288,13 @@ document.querySelector('#events').onclick=event=>{
 document.querySelector('#knock-display').onclick=()=>manualRequest('/api/event',{event:'knock'});
 document.querySelector('#send').onclick=()=>manualRequest('/api/message',{
   text:document.querySelector('#message').value,
-  duration:Number(document.querySelector('#duration').value)
+  duration:Number(document.querySelector('#duration').value),
+  text_size:Number(document.querySelector('#text-size').value)
 });
 document.querySelector('#send-caption').onclick=async()=>{
   stopDemo();
   const generation=++manualGeneration;
-  const query=new URLSearchParams({mood:captionMood.value,text:document.querySelector('#caption-text').value,duration:document.querySelector('#caption-duration').value});
+  const query=new URLSearchParams({mood:captionMood.value,text:document.querySelector('#caption-text').value,duration:document.querySelector('#caption-duration').value,text_size:document.querySelector('#caption-text-size').value});
   notice.textContent='Sending the reaction and overhead caption…';
   try{
     const data=await api('/api/react?'+query,null,()=>true,'GET');
@@ -283,7 +305,45 @@ document.querySelector('#send-caption').onclick=async()=>{
     if(generation===manualGeneration&&pageActive)notice.textContent='Request failed: '+error.message;
   }
 };
-for(const id of ['message','duration','token','caption-mood','caption-text','caption-duration']){
+function showIdleConfig(config){
+  idleOrder=config.actions;
+  const selected=new Set(idleOrder);
+  for(const option of idleActions.options)option.selected=selected.has(option.value);
+  document.querySelector('#idle-interval').value=config.interval;
+}
+async function loadIdle(showNotice=true){
+  if(showNotice)stopDemo();
+  const generation=++manualGeneration;
+  if(showNotice)notice.textContent='Loading idle rotation…';
+  try{
+    const config=await api('/api/idle',null,()=>true,'GET');
+    if(generation!==manualGeneration||!pageActive)return;
+    showIdleConfig(config);
+    if(showNotice)notice.textContent='Idle rotation loaded.';
+  }catch(error){
+    if(generation!==manualGeneration||!pageActive)return;
+    if(showNotice)notice.textContent='Request failed: '+error.message;
+    else notice.textContent='Could not load idle settings. Enter the API token if required, then click Load current.';
+  }
+}
+document.querySelector('#load-idle').onclick=()=>loadIdle();
+document.querySelector('#save-idle').onclick=async()=>{
+  stopDemo();
+  const generation=++manualGeneration;
+  const selected=[...idleActions.selectedOptions].map(option=>option.value);
+  const actions=[...idleOrder.filter(action=>selected.includes(action)),...selected.filter(action=>!idleOrder.includes(action))];
+  notice.textContent='Saving idle rotation…';
+  try{
+    const config=await api('/api/idle',{actions,interval:Number(document.querySelector('#idle-interval').value)});
+    if(generation!==manualGeneration||!pageActive)return;
+    showIdleConfig(config);
+    notice.textContent='Idle rotation saved · '+config.actions.length+' animations · '+config.interval+' seconds each';
+  }catch(error){
+    if(generation===manualGeneration&&pageActive)notice.textContent='Request failed: '+error.message;
+  }
+};
+loadIdle(false);
+for(const id of ['message','duration','text-size','token','caption-mood','caption-text','caption-duration','caption-text-size','idle-actions','idle-interval']){
   document.getElementById(id).addEventListener('input',()=>{
     if(demoRunning)stopDemo('Demo stopped while you edit the controls.');
   });

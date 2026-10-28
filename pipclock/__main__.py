@@ -68,7 +68,7 @@ def main():
         canvas = pygame.Surface((WIDTH, HEIGHT)).convert() if args.rotation else screen
         pygame.display.set_caption("Clawd — a little desktop company")
         pygame.mouse.set_visible(not args.fullscreen)
-        companion = Companion()
+        companion = Companion(idle_config_path=os.environ.get("PIPCLOCK_IDLE_CONFIG"))
         renderer = Renderer()
         wifi = WifiMonitor()
         frames = Frames() if args.preview else None

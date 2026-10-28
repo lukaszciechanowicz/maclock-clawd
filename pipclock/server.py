@@ -8,6 +8,8 @@ from pathlib import Path
 import threading
 from urllib.parse import parse_qsl, urlsplit
 
+from .model import DEFAULT_TEXT_SIZE
+
 MAX_BODY = 16 * 1024
 
 
@@ -98,16 +100,21 @@ def create_server(host, port, companion, frames=None, token=None):
                 if re.search(r"%(?![0-9a-fA-F]{2})", query):
                     raise ValueError("invalid percent escape in query")
                 pairs = parse_qsl(query, keep_blank_values=True, strict_parsing=True,
-                                  errors="strict", max_num_fields=3)
+                                  errors="strict", max_num_fields=4)
                 parameters = {}
                 for name, value in pairs:
-                    if name not in ("mood", "text", "duration") or name in parameters:
-                        raise ValueError("query parameters must be unique mood, text and optional duration")
+                    if name not in ("mood", "text", "duration", "text_size") or name in parameters:
+                        raise ValueError("query parameters must be unique mood, text, optional duration and text_size")
                     parameters[name] = value
                 if "mood" not in parameters or "text" not in parameters:
                     raise ValueError("mood and text query parameters are required")
                 duration = float(parameters["duration"]) if "duration" in parameters else 8
-                companion.react(parameters["mood"], parameters["text"], duration)
+                text_size = DEFAULT_TEXT_SIZE
+                if "text_size" in parameters:
+                    if not re.fullmatch(r"[+-]?[0-9]+", parameters["text_size"]):
+                        raise ValueError("text_size must be an integer")
+                    text_size = int(parameters["text_size"])
+                companion.react(parameters["mood"], parameters["text"], duration, text_size)
             except (ValueError, UnicodeError) as error:
                 self.json_reply(400, {"error": str(error)})
                 return
@@ -123,6 +130,9 @@ def create_server(host, port, companion, frames=None, token=None):
                     self.json_reply(200, companion.snapshot())
             elif path == "/api/react":
                 self.react(request.query)
+            elif path == "/api/idle":
+                if self.authorized():
+                    self.json_reply(200, companion.idle_config())
             elif path == "/" and preview:
                 self.reply(200, preview, "text/html; charset=utf-8")
             elif path == "/frame.jpg" and frames:
@@ -136,7 +146,7 @@ def create_server(host, port, companion, frames=None, token=None):
 
         def do_POST(self):
             path = urlsplit(self.path).path
-            if path not in ("/api/event", "/api/message", "/hooks/claude"):
+            if path not in ("/api/event", "/api/message", "/api/idle", "/hooks/claude"):
                 self.json_reply(404, {"error": "not found"})
                 return
             if not self.authorized():
@@ -164,7 +174,14 @@ def create_server(host, port, companion, frames=None, token=None):
                 if path == "/api/event":
                     companion.event(payload.get("event"), payload.get("duration"))
                 elif path == "/api/message":
-                    companion.message(payload.get("text"), payload.get("duration"))
+                    companion.message(payload.get("text"), payload.get("duration"),
+                                      payload.get("text_size", DEFAULT_TEXT_SIZE))
+                elif path == "/api/idle":
+                    try:
+                        config = companion.configure_idle(payload.get("actions"), payload.get("interval"))
+                    except OSError:
+                        self.json_reply(500, {"error": "could not persist idle configuration"})
+                        return
                 else:
                     companion.claude(payload)
             except (ValueError, UnicodeError, RecursionError) as error:
@@ -175,6 +192,8 @@ def create_server(host, port, companion, frames=None, token=None):
                 return
             if path == "/hooks/claude":
                 self.reply(204)
+            elif path == "/api/idle":
+                self.json_reply(200, config)
             else:
                 self.json_reply(200, companion.snapshot())
 

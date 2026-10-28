@@ -7,7 +7,7 @@ import unittest
 import pygame
 
 from pipclock.model import Companion
-from pipclock.renderer import HEIGHT, PAPER, WIDTH, Renderer
+from pipclock.renderer import HEIGHT, INK, PAPER, WIDTH, Renderer
 
 
 class RendererTests(unittest.TestCase):
@@ -15,6 +15,10 @@ class RendererTests(unittest.TestCase):
     def setUpClass(cls):
         cls.renderer = Renderer()
         cls.time = datetime.datetime(2026, 10, 27, 14, 37, 12)
+        cls.unicode_font = pygame.font.match_font(
+            "notosanscjksc,notosanscjk,hiraginosans,pingfangsc,arialunicode,dejavusans,arial"
+        )
+        cls.header = (32, 42, 576, 120)
 
     def frame(self, snapshot=None, wall_time=None, wifi_status="connected"):
         surface = pygame.Surface((WIDTH, HEIGHT))
@@ -24,6 +28,17 @@ class RendererTests(unittest.TestCase):
     @staticmethod
     def pixels(surface, rectangle=None):
         return pygame.image.tobytes(surface.subsurface(rectangle) if rectangle else surface, "RGB")
+
+    def glyphs(self, text, size=64):
+        return pygame.font.Font(self.unicode_font, size).render(text, True, INK)
+
+    def expected_header(self, glyphs, *positions):
+        lane = pygame.Surface((576, 120))
+        lane.fill(PAPER)
+        y = 60 - glyphs.get_height() // 2
+        for x in positions or (288 - glyphs.get_width() // 2,):
+            lane.blit(glyphs, (x, y))
+        return self.pixels(lane)
 
     def test_clock_ignores_date_and_seconds_but_changes_with_the_minute(self):
         original = self.frame()
@@ -62,15 +77,134 @@ class RendererTests(unittest.TestCase):
         clock = self.frame(companion.snapshot())
         self.assertEqual(self.pixels(clock, header), self.pixels(self.frame(), header))
 
-    def test_full_unicode_note_keeps_its_last_character(self):
-        prefix = "Zażółć gęślą 世界 " * 18
-        prefix = (prefix + "界" * 279)[:279]
-        first = self.frame({"state": "idle", "caption": prefix + "A"})
-        second = self.frame({"state": "idle", "caption": prefix + "B"})
-        self.assertNotEqual(self.pixels(first, (32, 42, 576, 108)), self.pixels(second, (32, 42, 576, 108)))
+    def test_requested_sizes_are_drawn_without_resizing(self):
+        for size in range(32, 97):
+            with self.subTest(size=size):
+                glyphs = self.glyphs("Hgj", size)
+                for kind in ("message", "caption"):
+                    image = self.frame({kind: "Hgj", kind + "_text_size": size})
+                    self.assertEqual(self.pixels(image, self.header), self.expected_header(glyphs))
 
-    def test_builtin_action_header_also_replaces_clock(self):
-        for state, elapsed in (("ok", 0), ("cloud_engineering", 1), ("deal_with_it", 2)):
+    def test_short_text_stays_centered_while_long_text_enters_and_moves_left(self):
+        for kind in ("message", "caption"):
+            with self.subTest(kind=kind):
+                short = {kind: "Hello", kind + "_text_size": 96}
+                first = self.frame({**short, kind + "_elapsed": 0})
+                later = self.frame({**short, kind + "_elapsed": 83})
+                self.assertEqual(self.pixels(first, self.header), self.pixels(later, self.header))
+                self.assertEqual(
+                    self.pixels(first, self.header), self.expected_header(self.glyphs("Hello", 96))
+                )
+                text = "A much longer single line to read without shrinking or wrapping."
+                long = {kind: text}
+                glyphs = self.glyphs(text)
+                blank = pygame.Surface((576, 120))
+                blank.fill(PAPER)
+                initial = self.frame({**long, kind + "_elapsed": 0})
+                self.assertEqual(self.pixels(initial, self.header), self.pixels(blank))
+                for elapsed in (1, 2):
+                    moving = self.frame({**long, kind + "_elapsed": elapsed})
+                    self.assertEqual(
+                        self.pixels(moving, self.header),
+                        self.expected_header(glyphs, 576 - elapsed * 100),
+                    )
+                self.assertNotEqual(
+                    self.pixels(self.frame({**long, kind + "_elapsed": 1}), self.header),
+                    self.pixels(self.frame({**long, kind + "_elapsed": 2}), self.header),
+                )
+
+    def test_long_unicode_tail_and_combining_marks_scroll_into_view(self):
+        prefix = ("Zażółć gęślą 世界 " * 18)[:277]
+        text = prefix + "A\u0301Z"
+        glyphs = self.glyphs(text)
+        # Put the final 240 pixels in the lane, after the first line's leading
+        # text has left. No character-count truncation may discard the tail.
+        distance = glyphs.get_width() + 336
+        image = self.frame({"caption": text, "caption_elapsed": distance / 100})
+        x = 576 - distance
+        self.assertEqual(
+            self.pixels(image, self.header),
+            self.expected_header(glyphs, x, x + glyphs.get_width() + 64),
+        )
+        different = self.frame({"caption": prefix + "B\u0301Z", "caption_elapsed": distance / 100})
+        self.assertNotEqual(self.pixels(image, self.header), self.pixels(different, self.header))
+
+    def test_ticker_repeats_with_a_64_pixel_gap_and_clips_before_art_and_wifi(self):
+        text = "Readable text with a predictable gap between each repeated line."
+        glyphs = self.glyphs(text, 96)
+        distance = glyphs.get_width() + 96
+        snapshot = {"message": text, "message_text_size": 96, "message_elapsed": distance / 100}
+        image = self.frame(snapshot)
+        x = 576 - distance
+        self.assertEqual(
+            self.pixels(image, self.header),
+            self.expected_header(glyphs, x, x + glyphs.get_width() + 64),
+        )
+        baseline = self.frame({"message": "Hi"})
+        self.assertEqual(self.pixels(image, (0, 168, WIDTH, 312)), self.pixels(baseline, (0, 168, WIDTH, 312)))
+        self.assertEqual(self.pixels(image, (600, 14, 26, 26)), self.pixels(baseline, (600, 14, 26, 26)))
+        for rectangle in ((0, 40, 32, 128), (608, 40, 32, 128), (0, 162, WIDTH, 6)):
+            self.assertEqual(self.pixels(image, rectangle), self.pixels(baseline, rectangle))
+
+    def test_newlines_flatten_and_lone_surrogates_do_not_discard_unicode(self):
+        image = self.frame({"message": "A\u0301\nB\ud800", "message_text_size": 96})
+        expected = self.frame({"message": "A\u0301 B\ufffd", "message_text_size": 96})
+        self.assertEqual(self.pixels(image), self.pixels(expected))
+
+    def test_caption_precedence_uses_its_own_size_and_scroll_clock(self):
+        text = "Caption scroll position is independent of the background action."
+        snapshot = {
+            "state": "idle", "elapsed": 91, "animation": "coffee", "animation_elapsed": 2,
+            "caption": text, "caption_text_size": 96, "caption_elapsed": 3,
+            "message": "Hidden message", "message_text_size": 32, "message_elapsed": 9,
+        }
+        first = self.frame(snapshot)
+        later = self.frame({
+            **snapshot, "elapsed": 152, "animation": "pool", "animation_elapsed": 17,
+            "message_elapsed": 45,
+        }, self.time.replace(minute=38))
+        expected = self.frame({"caption": text, "caption_text_size": 96, "caption_elapsed": 3})
+        self.assertEqual(self.pixels(first, self.header), self.pixels(expected, self.header))
+        self.assertEqual(self.pixels(first, self.header), self.pixels(later, self.header))
+        message = self.frame({
+            **snapshot, "caption": None, "message": text, "message_elapsed": 3, "message_text_size": 96,
+        })
+        self.assertEqual(self.pixels(first, self.header), self.pixels(message, self.header))
+
+    def test_message_scroll_clock_survives_idle_pose_and_action_changes(self):
+        snapshot = {
+            "state": "idle", "elapsed": 50, "animation": "reading", "animation_elapsed": 4,
+            "message": "An independent message clock keeps this ticker moving continuously.",
+            "message_elapsed": 2,
+        }
+        first = self.frame(snapshot)
+        for changes in (
+            {"animation": "pool", "animation_elapsed": 0, "elapsed": 60},
+            {"state": "wave", "animation": "wave", "animation_elapsed": 1, "elapsed": 1},
+        ):
+            image = self.frame({**snapshot, **changes})
+            self.assertEqual(self.pixels(first, self.header), self.pixels(image, self.header))
+
+    def test_idle_dispatch_uses_visible_pose_and_its_animation_time(self):
+        art = (0, 168, WIDTH, 312)
+        for state in ("pool", "reading", "coffee", "wave"):
+            with self.subTest(state=state):
+                idle = self.frame({"state": "idle", "elapsed": 94, "animation": state, "animation_elapsed": 1.5})
+                explicit = self.frame({"state": state, "elapsed": 1.5})
+                self.assertEqual(self.pixels(idle, art), self.pixels(explicit, art))
+                self.assertNotEqual(self.pixels(idle, art), self.pixels(self.frame(), art))
+        idle_builtin = self.frame({
+            "state": "idle", "elapsed": 94, "animation": "deal_with_it", "animation_elapsed": 0.5,
+        })
+        explicit_builtin = self.frame({"state": "deal_with_it", "elapsed": 0.5})
+        self.assertEqual(self.pixels(idle_builtin), self.pixels(explicit_builtin))
+
+    def test_builtin_action_headers_replace_clock(self):
+        for state, elapsed in (
+            ("ok", 0),
+            ("cloud_engineering", 1),
+            ("deal_with_it", 2),
+        ):
             with self.subTest(state=state):
                 first = self.frame({"state": state, "elapsed": elapsed})
                 second = self.frame({"state": state, "elapsed": elapsed}, self.time.replace(minute=38))

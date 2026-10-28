@@ -14,7 +14,7 @@ curl -X POST http://127.0.0.1:8765/api/event \
 
 curl -X POST http://127.0.0.1:8765/api/message \
   -H 'Content-Type: application/json' \
-  -d '{"text":"Build finished. Time for a stretch!","duration":20}'
+  -d '{"text":"Build finished. Time for a stretch!","duration":30,"text_size":80}'
 
 curl -X POST http://127.0.0.1:8765/api/event \
   -H 'Content-Type: application/json' \
@@ -23,16 +23,19 @@ curl -X POST http://127.0.0.1:8765/api/event \
 curl --get http://127.0.0.1:8765/api/react \
   --data-urlencode 'mood=cloud_engineering' \
   --data-urlencode 'text=Hello, Cloud Engineering!' \
-  --data-urlencode 'duration=12'
+  --data-urlencode 'duration=20' \
+  --data-urlencode 'text_size=64'
 ```
 
 | Endpoint | Behavior |
 | --- | --- |
 | `GET /health` | Public JSON liveness response. |
-| `GET /api/state` | Current snapshot: `state`, `elapsed`, `message`, `message_remaining`, `caption`, `caption_remaining`. |
+| `GET /api/state` | Logical `state`/`elapsed`, visible `animation`/`animation_elapsed`, and independent message/caption text, remaining time, `*_text_size` and `*_elapsed`. |
 | `POST /api/event` | Any action listed below; optional `duration` in seconds, positive and at most 3600. Omit duration for the action default. |
-| `POST /api/message` | Timed text above Clawd, replacing the clock: 1–280 Unicode characters; required `duration`: positive seconds, at most 3600. |
-| `GET /api/react?mood=wave&text=Hello!` | Atomically select a reaction and show text **above Clawd**; optional `duration`, default 8 seconds, positive and at most 3600. |
+| `POST /api/message` | Timed text above Clawd: 1–280 Unicode characters; required `duration`: positive seconds, at most 3600; optional integer `text_size`: 32–96 px, default 64. |
+| `GET /api/react?mood=wave&text=Hello!` | Atomically select a reaction and show text **above Clawd**; optional `duration`: default 8 seconds, at most 3600; optional integer `text_size`: 32–96 px, default 64. |
+| `GET /api/idle` | Current idle playlist: ordered `actions` and `interval` in seconds. |
+| `POST /api/idle` | Replace the nonempty, unique `actions` list and numeric `interval` in the inclusive range 5–3600 seconds. |
 | `POST /hooks/claude` | Claude Code JSON lifecycle payload; recognized events receive HTTP 204 with no decision output. |
 | `GET /`, `GET /frame.jpg` | Desktop HTML/JPEG mirror, only when `--preview` is enabled. |
 
@@ -42,11 +45,46 @@ A new event immediately replaces the previous event; expiry returns to idle. An 
 
 `http://127.0.0.1:8765/api/react?mood=wave&text=Hello!` starts the wave and displays “Hello!” above Clawd for eight seconds. `mood` accepts **any name in the reaction table**; `text` must contain 1–280 printable Unicode characters, may include newlines, and must not be blank. Encode query values with `curl --get --data-urlencode` or `URLSearchParams`, especially for spaces, `&`, `+`, `#` and non-ASCII text.
 
-The optional `duration` controls **both** the chosen animation and caption. When it expires, Clawd returns to idle and the caption disappears; an `idle` reaction simply remains idle. Use `duration=12` for the full `closeup` approach, expression and return. A new reaction restarts the animation and replaces the caption. A subsequent `/api/event` or Claude hook clears the caption immediately, so stale text cannot accompany an unrelated action. Timed `/api/message` text remains independent and uses the same header only when no reaction caption is active. Supplied API text overrides the built-in action title.
+The optional `duration` controls **both** the chosen animation and caption. When it expires, Clawd returns to the idle playlist and the caption disappears; an `idle` reaction starts the playlist immediately. Use `duration=12` for the full `closeup` approach, expression and return. A new reaction restarts the animation and replaces the caption. A subsequent `/api/event` or Claude hook clears the caption immediately, so stale text cannot accompany an unrelated action. Timed `/api/message` text remains independent and uses the same header only when no reaction caption is active. Supplied API text overrides the built-in action title.
 
-Text wraps/downscales in a reserved overhead lane, replacing the clock rather than covering Clawd. The artwork stays the same enlarged size with and without text. Long captions use smaller lettering. Caption font coverage still depends on the device's installed fonts; the clock uses its bundled DSEG7 Classic font and needs no system font installation.
+Text uses **64 px by default**, twice the previous maximum font size. Both text endpoints accept optional `text_size`: an integer from **32 through 96**, in logical 640 × 480 display pixels. Fractional values, booleans, null, out-of-range values and JSON strings are rejected. Query-string sizes must be integer text.
+
+Short text stays centered. A line wider than the header enters from the right and scrolls left at 100 px/s, repeating with a 64 px gap. Text is **never shrunk or truncated to fit**; newlines become spaces in the single-line ticker. Choose a long enough `duration` to read the whole line—the timer is not automatically extended. Each message/caption has its own scroll clock; action changes and idle rotation do not reset it, and a hidden message's timer and scrolling continue behind a caption.
+
+The artwork keeps the same enlarged size with and without text. Font coverage still depends on the device's installed fonts; the clock uses its bundled DSEG7 Classic font and needs no system font installation.
 
 Missing, blank, duplicate, unknown, malformed or invalid query values return HTTP 400 **without changing the current reaction, caption or note**. Authentication is the same bearer header as other API routes; never put a token in the URL. This is an intentionally state-changing GET for simple webhook/query integrations: do not embed it in remote images or prefetchable links. Cross-site browser requests and foreign `Origin` headers receive HTTP 403, including in token-free loopback mode. CLI requests and same-origin preview controls are supported. Query text can appear in client/proxy URL history, so do not send secrets.
+
+## Idle playlist
+
+Idle is a logical mode, not necessarily the standard standing pose. Every 30 seconds by default it advances through:
+
+`idle` → `pool` → `skate` → `headphones` → `sleeping` → `reading` → `coffee` → `kite` → `swaying`.
+
+Configure any nonempty list of distinct names from the reaction table; the order is preserved and repeated round-robin:
+
+```sh
+curl http://127.0.0.1:8765/api/idle
+
+curl http://127.0.0.1:8765/api/idle \
+  -H 'Content-Type: application/json' \
+  -d '{"actions":["idle","pool","skate","headphones","sleeping","reading"],"interval":30}'
+
+curl http://127.0.0.1:8765/api/event \
+  -H 'Content-Type: application/json' \
+  -d '{"event":"idle"}'
+```
+
+`GET` and `POST /api/idle` return the configuration directly. `interval` accepts finite numbers from 5 to 3600 seconds, including fractions. A single selected action plays continuously without pose resets; use `{"actions":["idle"],"interval":30}` to keep only the standard standing Clawd.
+
+Explicit events/reactions/hooks interrupt the playlist. Their expiry restarts idle at the first entry; an explicit `idle` event starts it immediately. Messages do not interrupt the playlist. Changing the playlist while idle restarts it immediately; changing it during an explicit action leaves that action and its caption running.
+
+`GET /api/state` keeps `state: "idle"` throughout rotation. Read `animation` for the visible Clawd and `animation_elapsed` for its current pose time. `elapsed` remains logical event time; `message_elapsed` and `caption_elapsed` track their respective text independently.
+
+On the native Pi service, configuration is saved atomically in `/var/lib/pipclock/idle.json`, under the private systemd state directory, and loaded after restarts. Desktop previews are in-memory unless `PIPCLOCK_IDLE_CONFIG` names a settings file. Invalid persisted configuration fails startup explicitly. Invalid requests return HTTP 400 without mutation; a persistence failure returns HTTP 500 and keeps the previous configuration.
+
+The preview also exposes text-size controls and an idle-group picker. LAN clients use the same endpoints with the bearer header shown below; no SSH is required.
+
 
 ## Reaction summary
 
@@ -54,7 +92,7 @@ All **62 mood/event names** work with both `POST /api/event` and `GET /api/react
 
 | Mood / event | Event default | What Clawd does | Artwork |
 | --- | --- | --- | --- |
-| `idle` | Until replaced | Breathe quietly and blink. | Custom |
+| `idle` | Until replaced | Run the configured idle playlist; the `idle` entry itself breathes quietly and blinks. | Custom + selected artwork |
 | `smile` | 8 s | Smile with stepped happy eyes and a gentle bob; no mouth. | Custom |
 | `knock` | 8 s | Tap the screen with a foreshortened side block and glass impact marks; no door. | Custom |
 | `waiting` | 60 s | Glance around patiently beside a tiny hourglass. | Custom |
@@ -125,7 +163,7 @@ curl http://127.0.0.1:8765/api/event \
   -d '{"event":"coffee","duration":12}'
 ```
 
-Messages wrap at word boundaries and split long words; dense notes shrink to fit the panel without covering the clock or action scene. Blank notes and control characters other than newlines are rejected. Unicode glyph coverage depends on locally installed fonts; missing scripts or emoji may display replacement boxes.
+Blank text and control characters other than newlines are rejected. Unicode glyph coverage depends on locally installed fonts; missing scripts or emoji may display replacement boxes.
 
 ## Authentication and request limits
 
@@ -162,13 +200,14 @@ curl -fsS http://192.168.1.57:8765/api/event \
 curl -fsS http://192.168.1.57:8765/api/message \
   -H "Authorization: Bearer ${PIPCLOCK_TOKEN}" \
   -H 'Content-Type: application/json' \
-  -d '{"text":"Cześć z sieci!","duration":20}'
+  -d '{"text":"Cześć z sieci!","duration":30,"text_size":80}'
 
 curl --get --fail-with-body http://192.168.1.57:8765/api/react \
   -H "Authorization: Bearer ${PIPCLOCK_TOKEN}" \
   --data-urlencode 'mood=wave' \
   --data-urlencode 'text=Cześć!' \
-  --data-urlencode 'duration=12'
+  --data-urlencode 'duration=20' \
+  --data-urlencode 'text_size=80'
 ```
 
 To diagnose connectivity separately from authentication, run `curl -fsS http://192.168.1.57:8765/health` from the client. It should return `{"status": "ok", "preview": false}`; then verify that an unauthenticated `/api/state` returns HTTP 401 and the same request with the bearer header succeeds.
