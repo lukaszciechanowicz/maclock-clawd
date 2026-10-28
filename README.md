@@ -42,6 +42,8 @@ Clawd and website artwork © Anthropic. Unofficial project; brand marks belong t
 
 The unit expects the source in `/opt/maclock-clawd`, distro `python3-pygame` 2.6.1, `libgbm1`, `libegl1`, `libgles2`, `libgl1-mesa-dri`, `fontconfig` and `fonts-dejavu-core`. Its `pipclock` system account needs the `video`, `render` and `input` groups; the service takes over `tty1` from getty.
 
+The service defaults to loopback. For direct LAN requests without SSH, set `PIPCLOCK_HOST=0.0.0.0` and a strong `PIPCLOCK_TOKEN` in the root-readable `/etc/pipclock.env`, then restart the service. Clients use the Pi's IP and a bearer header; see [LAN setup and examples](docs/api.md#direct-lan-access-on-raspberry-pi). The browser preview remains local-only.
+
 The unit explicitly selects `SDL_FRAMEBUFFER_ACCELERATION=opengles2` for VC4. SDL's automatic desktop OpenGL framebuffer renderer can otherwise produce an all-black scanout despite a healthy API and a correctly drawn CPU-side surface; verify the actual DRM framebuffer when diagnosing a blank panel.
 
 `--rotation 90` maps the logical 640 × 480 scene onto the panel's native 480 × 640 pixels. Angles are counterclockwise; use `270` for the opposite mounting, `180` for an upside-down landscape panel, or the default `0` for a normal landscape display. Browser previews stay landscape. The `--fps` setting is a ceiling, not a guaranteed rate on the original Pi Zero W.

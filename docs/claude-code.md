@@ -38,3 +38,5 @@ python3 -m pipclock --fullscreen --host 0.0.0.0
 ```
 
 Change the hook URL to the Pi's address only if you deliberately choose LAN access. Plain HTTP does not encrypt the token or Claude payloads: prefer SSH, restrict firewall access and never expose this port to the Internet. Preview cannot be enabled with this non-loopback binding.
+
+For the native systemd installation, configure `PIPCLOCK_HOST` and `PIPCLOCK_TOKEN` in `/etc/pipclock.env` instead of starting a second process; see [direct LAN access](api.md#direct-lan-access-on-raspberry-pi). After setup, clients post directly to `http://PI_ADDRESS:8765/hooks/claude` with the bearer header, without an SSH session.

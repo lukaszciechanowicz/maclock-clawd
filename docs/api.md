@@ -140,3 +140,39 @@ curl http://127.0.0.1:8765/api/state \
 ```
 
 The token protects `/api/*` and `/hooks/*`, not `/health` or the loopback-only preview. Enter the token into the browser mirror's password field when needed; it is not embedded in HTML. Loopback is not authentication against other processes/users on the same machine.
+
+## Direct LAN access on Raspberry Pi
+
+The native systemd service defaults to `127.0.0.1:8765`. To accept requests directly from other devices, edit `/etc/pipclock.env` with `sudoedit`:
+
+- Set `PIPCLOCK_HOST=0.0.0.0` to listen on the Pi's network interfaces.
+- Set `PIPCLOCK_TOKEN` to a random secret, generated with `openssl rand -hex 32`. Keep this file owned by root with mode `0600`.
+- Install the current `deploy/pipclock.service`, run `sudo systemctl daemon-reload`, then `sudo systemctl restart pipclock.service`.
+
+The app refuses a non-loopback bind without a token. The service binds before Wi-Fi receives its address, so no fixed IP is needed in its configuration. Use a DHCP reservation if clients need a stable Pi address.
+
+On each client, store the same token privately as `PIPCLOCK_TOKEN`. Once configured, normal requests need neither SSH nor sudo:
+
+```sh
+curl -fsS http://192.168.1.57:8765/api/event \
+  -H "Authorization: Bearer ${PIPCLOCK_TOKEN}" \
+  -H 'Content-Type: application/json' \
+  -d '{"event":"dance","duration":20}'
+
+curl -fsS http://192.168.1.57:8765/api/message \
+  -H "Authorization: Bearer ${PIPCLOCK_TOKEN}" \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"Cześć z sieci!","duration":20}'
+
+curl --get --fail-with-body http://192.168.1.57:8765/api/react \
+  -H "Authorization: Bearer ${PIPCLOCK_TOKEN}" \
+  --data-urlencode 'mood=wave' \
+  --data-urlencode 'text=Cześć!' \
+  --data-urlencode 'duration=12'
+```
+
+To diagnose connectivity separately from authentication, run `curl -fsS http://192.168.1.57:8765/health` from the client. It should return `{"status": "ok", "preview": false}`; then verify that an unauthenticated `/api/state` returns HTTP 401 and the same request with the bearer header succeeds.
+
+`GET /health` remains unauthenticated; `/api/*` and `/hooks/*` return HTTP 401 without the correct bearer token. Preview pages and JPEGs are not enabled by this LAN configuration. Browser cross-origin requests are still unsupported; this is intended for CLI, scripts and server-to-server callers.
+
+Plain HTTP does **not** encrypt the token or message. Use only on a trusted LAN, do not forward port 8765 from the Internet, and use an encrypted connection for untrusted networks.
