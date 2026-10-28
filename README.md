@@ -32,7 +32,7 @@ Keep the process running; stop it with Ctrl-C. If the browser reports `ERR_CONNE
 - Python and pygame render natively; the Pi needs no browser, LLM or runtime animation downloads.
 - Custom block-shaped poses sit alongside bundled frames from claude.dev. The side rectangles are Clawd's arms.
 - A larger, consistently terracotta Clawd sits near the bottom of a flat sand background; no frame, date, slogans or lower status panel.
-- The raised, bold seven-segment clock shows only hours and minutes. API captions and timed messages replace it above Clawd without shrinking the artwork; reaction captions take priority over timed messages.
+- The raised calculator-style clock uses bundled DSEG7 Classic digits and shows only hours and minutes. API captions and timed messages replace it above Clawd without shrinking the artwork; reaction captions take priority over timed messages.
 - A small top-right Wi-Fi icon distinguishes connected, disconnected and unavailable radios. Linux link state refreshes every two seconds without Internet probes; this indicates Wi-Fi association, not Internet availability. Desktop previews without Linux sysfs show the unavailable icon.
 - The optional browser mirror shows the same native frames. The magnifying-glass animation uses no camera or microphone.
 

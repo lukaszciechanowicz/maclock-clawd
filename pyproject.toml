@@ -20,7 +20,7 @@ gallery = ["Pillow>=11,<14"]
 pipclock = "pipclock.__main__:main"
 
 [tool.setuptools.package-data]
-pipclock = ["preview.html", "assets/*.json", "assets/*.png", "assets/brands/*.json", "assets/brands/*.png"]
+pipclock = ["preview.html", "assets/*.json", "assets/*.png", "assets/brands/*.json", "assets/brands/*.png", "assets/fonts/*.ttf", "assets/fonts/*.txt"]
 
 [tool.setuptools.packages.find]
 include = ["pipclock*"]

@@ -12,11 +12,13 @@ Publicly reachable asset URLs **do not establish an open-source or open-content 
 
 Flag artwork uses official marks from [AWS](https://aws.amazon.com/), [ShipStation](https://www.shipstation.com/wp-content/uploads/2026/02/logo-ss-primary-rgb-1-1.svg) and [Stamps.com](https://www.stamps.com/wp-content/uploads/2026/02/logo-stamps-primary-rgb-1-1.svg). These marks belong to their respective owners and do not imply sponsorship or endorsement. The native flag animations are custom; the logos are not original project artwork. Source URLs and SHA-256 hashes are recorded in [`pipclock/assets/brands/sources.json`](../pipclock/assets/brands/sources.json). See also the [AWS trademark guidelines](https://aws.amazon.com/trademark-guidelines/).
 
+The clock uses **DSEG7 Classic Regular** by keshikan, bundled unmodified from the [official DSEG v0.46 release](https://github.com/keshikan/DSEG/releases/tag/v0.46). The font is licensed under the **SIL Open Font License 1.1**, with its original copyright and Reserved Font Name notice included in [`DSEG-LICENSE.txt`](../pipclock/assets/fonts/DSEG-LICENSE.txt). This font license is separate from the character artwork rights above.
+
 The existing package, CLI and environment-variable names remain `pipclock` and `PIPCLOCK_TOKEN`; the on-screen character is Clawd.
 
 ## Rebuilding the bundled artwork
 
-The runtime needs only pygame and the included PNG files. Baking is a separate desktop-only developer task:
+The runtime needs only pygame, the included PNG artwork and the bundled DSEG clock font. Baking is a separate desktop-only developer task:
 
 ```sh
 .venv/bin/pip install -e '.[artwork]'

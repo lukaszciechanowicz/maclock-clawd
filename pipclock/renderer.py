@@ -41,7 +41,9 @@ class Renderer:
     def __init__(self):
         if not pygame.font.get_init():
             pygame.font.init()
-        self._clock_glyphs = self._clock_graphics()
+        self._clock_font = pygame.font.Font(
+            str(Path(__file__).with_name("assets") / "fonts" / "DSEG7Classic-Regular.ttf"), 102
+        )
         unicode_path = pygame.font.match_font(
             "notosanscjksc,notosanscjk,hiraginosans,pingfangsc,arialunicode,dejavusans,arial"
         )
@@ -49,7 +51,7 @@ class Renderer:
         self.website = WebsiteAnimations()
         self._art_rect = pygame.Rect(0, 168, WIDTH, HEIGHT - 168)
         self._clock_key = None
-        self._clock_text = pygame.Surface((278, 102), pygame.SRCALPHA)
+        self._clock_text = None
         self._header_key = None
         self._header_surface = None
         self._wifi = self._wifi_graphics()
@@ -90,34 +92,6 @@ class Renderer:
             icons[status] = image
         return icons
 
-    @staticmethod
-    def _clock_graphics():
-        """Cache calculator-style seven-segment digits without a font dependency."""
-        horizontal = ((11, 0), (45, 0), (53, 8), (45, 16), (11, 16), (3, 8))
-        vertical = ((0, 15), (8, 7), (16, 15), (16, 39), (8, 47), (0, 39))
-        segments = {
-            "a": horizontal,
-            "b": tuple((x + 40, y) for x, y in vertical),
-            "c": tuple((x + 40, y + 44) for x, y in vertical),
-            "d": tuple((x, y + 84) for x, y in horizontal),
-            "e": tuple((x, y + 44) for x, y in vertical),
-            "f": vertical,
-            "g": tuple((x, y + 42) for x, y in horizontal),
-        }
-        glyphs = {}
-        for digit, enabled in enumerate((
-            "abcdef", "bc", "abdeg", "abcdg", "bcfg",
-            "acdfg", "acdefg", "abc", "abcdefg", "abcdfg",
-        )):
-            image = pygame.Surface((58, 102), pygame.SRCALPHA)
-            for segment in enabled:
-                pygame.draw.polygon(image, INK, segments[segment])
-            glyphs[str(digit)] = image
-        colon = pygame.Surface((14, 102), pygame.SRCALPHA)
-        for y in (31, 71):
-            pygame.draw.circle(colon, INK, (7, y), 6)
-        glyphs[":"] = colon
-        return glyphs
 
 
     @staticmethod
@@ -196,12 +170,7 @@ class Renderer:
     def _clock(self, surface, wall_time):
         key = wall_time.strftime("%H:%M")
         if key != self._clock_key:
-            self._clock_text.fill((0, 0, 0, 0))
-            x = 0
-            for character in key:
-                glyph = self._clock_glyphs[character]
-                self._clock_text.blit(glyph, (x, 0))
-                x += glyph.get_width() + 8
+            self._clock_text = self._clock_font.render(key, True, INK)
             self._clock_key = key
         self._center(surface, self._clock_text, 320, 54)
 
