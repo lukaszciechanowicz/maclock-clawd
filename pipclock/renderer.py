@@ -10,138 +10,120 @@ from pathlib import Path
 import pygame
 
 from .animations import WebsiteAnimations
-from .catalog import WEBSITE_ACTIONS
+from .model import EVENT_DURATIONS
 
 
 WIDTH, HEIGHT = 640, 480
-PAPER = (246, 241, 230)
+PAPER = (232, 221, 198)
 CREAM = (255, 252, 245)
-SCENE = (241, 235, 222)
 INK = (44, 53, 47)
-BLACK = (21, 23, 21)
+BLACK = (20, 20, 19)
 MUTED = (125, 130, 115)
 LINE = (217, 213, 197)
 TEAL = (76, 112, 99)
 GOLD = (210, 164, 89)
-CORAL = (199, 123, 96)
-SHADOW = (219, 210, 191)
+CORAL = (217, 119, 87)
 ELLIPSE = tuple((math.cos(i * math.tau / 32), math.sin(i * math.tau / 32)) for i in range(32))
 # Side rectangles are the arms themselves; no extra limbs are attached.
 BODY = ((-72, -66), (72, -66), (72, 37), (-72, 37))
 FOOT_X = (-72, -40, 24, 56)
 STEP_LIFT = (0, 4, 10, 12, 8, 0, 0, 0)
 STEP_SHIFT = (-4, -2, 2, 5, 4, 1, -2, -4)
-STATUS = {
-    "idle": ("READY WHEN YOU ARE", "A little company.", "A quiet desk. A good place to begin."),
-    "wave": ("NICE TO SEE YOU", "Oh, hello there!", "Make yourself at home."),
-    "thinking": ("CONNECTING THE DOTS", "A thought is taking shape...", "Good ideas deserve a little room."),
-    "bounce": ("A LITTLE EXTRA ENERGY", "Small joys. Big bounce.", "A spring in all four steps."),
-    "dance": ("DESK-SIZED DISCO", "Found my rhythm.", "No dance floor required."),
-    "smile": ("THE BRIGHT SIDE", "You're doing a lovely job.", "Just thought you should know."),
-    "knock": ("KNOCK, KNOCK", "Anyone home?", "A tiny knock. A friendly visitor."),
-    "waiting": ("TAKE YOUR TIME", "No rush. I'm here.", "A little pause can be a good thing."),
-    "sleeping": ("QUIET HOURS", "Recharging the good vibes.", "Shh... just a little desk nap."),
-    "coffee": ("ONE GOOD COFFEE", "A well-earned little break.", "A warm mug and a quiet moment."),
-    "reading": ("JUST ONE MORE PAGE", "Lost in a good book.", "A whole adventure, right here on the desk."),
-    "lens": ("A CLOSER LOOK", "Something interesting here...", "A little theatrical desk detective."),
-    "ok": ("LOOKING GOOD", "All OK over here!", "You've got this. Every little bit of it."),
-    "scared": ("A SMALL STARTLE", "Oh! Just passing through!", "Off to the right. Back from the left. Safe again."),
-    "phone_ringing": ("A LITTLE BUZZ", "Someone's calling!", "A silent ring. A desk-sized vibration."),
-    "sunglasses": ("LOOKING SHARP", "Keeping it pixel cool.", "Classic shades. Quiet confidence."),
-    "deal_with_it": ("STAY COOL", "Cool under pressure.", "A little confidence, right on cue."),
-    "closeup": ("UP CLOSE", "A friendly closer look.", "Just two eyes and a little smile."),
-    "heart_eyes": ("ALL HEART", "A little love for your day.", "Two tiny hearts. One happy companion."),
-    "flag_pl": ("WHITE AND RED", "A little wave for Poland.", "Two familiar colors. A warm hello."),
-    "flag_aws": ("BUILDING IN THE CLOUD", "Flying the AWS flag.", "Big ideas start with a little curiosity."),
-    "flag_shipstation": ("READY TO SHIP", "Flying the ShipStation flag.", "Good things are on their way."),
-    "flag_stamps": ("SIGNED, SEALED, SENT", "Flying the Stamps.com flag.", "A little postage. A lot of possibility."),
-    "cloud_engineering": ("CLOUD ENGINEERING", "Built with a little heart.", "Happy hearts. Thoughtful engineering."),
-}
-
-
-for _state, _action in WEBSITE_ACTIONS.items():
-    STATUS.setdefault(_state, (_action["label"].upper(), _action["label"] + ".", "Website animation from claude.dev."))
 
 
 class Renderer:
-    """Draw onto a logical 640 × 480 surface without creating a display.
+    """Draw a quiet 640 × 480 scene with cached artwork and header text.
 
-    Background, fonts, labels, clock and flag frames are cached. Overhead
-    captions and bottom notes maintain independent text-layout caches.
-    Character motion uses native-size primitives, never supersampled frames.
+    API captions take priority over timed messages, then action text, then the
+    minute-only clock. Artwork keeps the same size with or without text.
     """
 
     def __init__(self):
         if not pygame.font.get_init():
             pygame.font.init()
-        self.fonts = {size: pygame.font.Font(None, size) for size in (14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 38, 96)}
+        self._clock_glyphs = self._clock_graphics()
         unicode_path = pygame.font.match_font(
             "notosanscjksc,notosanscjk,hiraginosans,pingfangsc,arialunicode,dejavusans,arial"
         )
-        self.message_fonts = {size: pygame.font.Font(unicode_path, size) for size in range(10, 29)}
+        self.message_fonts = {size: pygame.font.Font(unicode_path, size) for size in range(12, 33)}
         self.website = WebsiteAnimations()
-        self.background = self._background()
-        self._scene_rect = pygame.Rect(26, 153, 588, 205)
-        self._caption_canvas = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        self._caption_canvas.set_clip(self._scene_rect)
-        self._caption_view = self._caption_canvas.subsurface(self._scene_rect)
-        self._caption_scaled = pygame.Surface((440, 154), pygame.SRCALPHA)
-        self.status_text = {
-            state: (self._text(eyebrow, 16, TEAL), self._fit_label(title, 32, 550), self._text(subtitle, 18, MUTED))
-            for state, (eyebrow, title, subtitle) in STATUS.items()
-        }
+        self._art_rect = pygame.Rect(0, 168, WIDTH, HEIGHT - 168)
         self._clock_key = None
-        self._clock_text = ()
-        self._message_key = None
-        self._message_surface = None
-        self._message_label = self._text("A NOTE FOR YOU", 16, TEAL)
-        self._caption_key = None
-        self._caption_surface = None
-        self._ok_text = self._text("OK!", 24, TEAL)
-        self._tap_text = self._text("tap tap", 16, TEAL)
-        self._deal_text = self._text("Deal with it.", 26, INK)
-        self._mug = self._mug_graphic()
-        self._book = self._book_graphic()
-        self._lens = self._lens_graphic()
-        self._glasses = self._glasses_graphic()
-        self._heart_morph, self._heart_pulse = self._heart_graphics()
-        self._flags = self._flag_graphics()
+        self._clock_text = pygame.Surface((278, 102), pygame.SRCALPHA)
+        self._header_key = None
+        self._header_surface = None
+        self._wifi = self._wifi_graphics()
+        self._mug = self._enlarge(self._mug_graphic(), 2)
+        self._book = self._enlarge(self._book_graphic(), 2)
+        self._lens = self._enlarge(self._lens_graphic(), 2)
+        self._glasses = self._enlarge(self._glasses_graphic(), 2)
+        morph, pulse = self._heart_graphics()
+        self._heart_morph = tuple(self._enlarge(image, 2) for image in morph)
+        self._heart_pulse = tuple(self._enlarge(image, 2) for image in pulse)
+        self._flags = {
+            state: tuple(self._enlarge(image, 1.65) for image in frames)
+            for state, frames in self._flag_graphics().items()
+        }
 
-    def _text(self, text, size, color=INK):
-        return self.fonts[size].render(text, True, color)
+    @staticmethod
+    def _enlarge(image, scale):
+        return pygame.transform.scale(image, (round(image.get_width() * scale), round(image.get_height() * scale)))
 
-    def _fit_label(self, text, size, width):
-        for candidate in sorted((s for s in self.fonts if s <= size), reverse=True):
-            if self.fonts[candidate].size(text)[0] <= width:
-                return self._text(text, candidate)
-        return self._text(text, 14)
+    @staticmethod
+    def _wifi_graphics():
+        """Bake three small, distinct states; never query the host network."""
+        icons = {}
+        for status in ("connected", "disconnected", "unavailable"):
+            image = pygame.Surface((26, 26), pygame.SRCALPHA)
+            color = TEAL if status == "connected" else MUTED
+            for radius in (7, 12, 17):
+                pygame.draw.arc(image, color, (13 - radius, 23 - radius, radius * 2, radius * 2),
+                                math.pi / 4, math.pi * 3 / 4, 2)
+            pygame.draw.circle(image, color, (13, 22), 2)
+            if status == "disconnected":
+                pygame.draw.line(image, PAPER, (3, 3), (23, 23), 5)
+                pygame.draw.line(image, INK, (3, 3), (23, 23), 2)
+            elif status == "unavailable":
+                pygame.draw.circle(image, PAPER, (20, 19), 6)
+                pygame.draw.line(image, INK, (17, 16), (23, 22), 2)
+                pygame.draw.line(image, INK, (23, 16), (17, 22), 2)
+            icons[status] = image
+        return icons
+
+    @staticmethod
+    def _clock_graphics():
+        """Cache calculator-style seven-segment digits without a font dependency."""
+        horizontal = ((11, 0), (45, 0), (53, 8), (45, 16), (11, 16), (3, 8))
+        vertical = ((0, 15), (8, 7), (16, 15), (16, 39), (8, 47), (0, 39))
+        segments = {
+            "a": horizontal,
+            "b": tuple((x + 40, y) for x, y in vertical),
+            "c": tuple((x + 40, y + 44) for x, y in vertical),
+            "d": tuple((x, y + 84) for x, y in horizontal),
+            "e": tuple((x, y + 44) for x, y in vertical),
+            "f": vertical,
+            "g": tuple((x, y + 42) for x, y in horizontal),
+        }
+        glyphs = {}
+        for digit, enabled in enumerate((
+            "abcdef", "bc", "abdeg", "abcdg", "bcfg",
+            "acdfg", "acdefg", "abc", "abcdefg", "abcdfg",
+        )):
+            image = pygame.Surface((58, 102), pygame.SRCALPHA)
+            for segment in enabled:
+                pygame.draw.polygon(image, INK, segments[segment])
+            glyphs[str(digit)] = image
+        colon = pygame.Surface((14, 102), pygame.SRCALPHA)
+        for y in (31, 71):
+            pygame.draw.circle(colon, INK, (7, y), 6)
+        glyphs[":"] = colon
+        return glyphs
+
 
     @staticmethod
     def _center(surface, image, x, y):
         surface.blit(image, (round(x - image.get_width() / 2), round(y)))
 
-    def _background(self):
-        surface = pygame.Surface((WIDTH, HEIGHT))
-        surface.fill(PAPER)
-        pygame.draw.rect(surface, INK, (12, 12, 616, 456), 2, border_radius=19)
-        pygame.draw.rect(surface, LINE, (17, 17, 606, 446), 1, border_radius=15)
-        pygame.draw.rect(surface, CORAL, (32, 27, 70, 23), border_radius=5)
-        self._center(surface, self._text("CLAWD", 20, CREAM), 67, 31)
-        surface.blit(self._text("YOUR LITTLE DESK COMPANION", 16, TEAL), (114, 33))
-        pygame.draw.circle(surface, TEAL, (600, 39), 4)
-        pygame.draw.line(surface, LINE, (349, 65), (349, 130))
-        pygame.draw.rect(surface, SCENE, (24, 151, 592, 209), border_radius=9)
-        for x in range(41, 611, 22):
-            for y in range(169, 340, 22):
-                pygame.draw.circle(surface, (226, 220, 204), (x, y), 1)
-        pygame.draw.rect(surface, (232, 224, 207), (25, 349, 590, 10))
-        pygame.draw.line(surface, (205, 197, 176), (25, 349), (615, 349))
-        surface.blit(self._text("A LITTLE SPACE TO BE YOURSELF", 14, MUTED), (36, 161))
-        surface.blit(self._text("100% GOOD COMPANY", 14, MUTED), (472, 337))
-        pygame.draw.rect(surface, SHADOW, (29, 375, 584, 83), border_radius=11)
-        pygame.draw.rect(surface, CREAM, (27, 372, 586, 83), border_radius=11)
-        pygame.draw.rect(surface, LINE, (27, 372, 586, 83), 1, border_radius=11)
-        return surface
 
     @staticmethod
     def _clusters(text):
@@ -176,65 +158,25 @@ class Renderer:
             lines.append("".join(current).rstrip())
         return lines
 
-    def _message(self, message):
-        if message == self._message_key:
-            return self._message_surface
-        # Reject neither Unicode notes nor JSON's possible lone surrogates.
-        clean = "".join(
-            "\ufffd" if 0xD800 <= ord(c) <= 0xDFFF else
-            " " if unicodedata.category(c) == "Cc" and c != "\n" else c
-            for c in message
-        )
-        clean = "\n".join(line for line in clean.split("\n") if line.strip()) or " "
-        width, height = 550, 55
-        for size in range(24, 11, -1):
-            font = self.message_fonts[size]
-            lines = self._wrap(clean, font, width)
-            line_height = font.get_linesize()
-            if len(lines) * line_height <= height and all(font.size(line)[0] <= width for line in lines):
-                break
-        else:
-            clean = " ".join(clean.split())
-            for size in range(24, 11, -1):
-                font = self.message_fonts[size]
-                lines = self._wrap(clean, font, width)
-                line_height = font.get_linesize()
-                if len(lines) * line_height <= height:
-                    break
-        rendered = pygame.Surface((width, height), pygame.SRCALPHA)
-        total_height = len(lines) * line_height
-        content = pygame.Surface((max(width, max((font.size(line)[0] for line in lines), default=1)), max(1, total_height)), pygame.SRCALPHA)
-        for index, line in enumerate(lines):
-            image = font.render(line, True, INK)
-            content.blit(image, ((content.get_width() - image.get_width()) // 2, index * line_height))
-        # Only a changed, exceptionally dense note is scaled, never a frame.
-        if content.get_width() > width or content.get_height() > height:
-            ratio = min(width / content.get_width(), height / content.get_height())
-            content = pygame.transform.smoothscale(content, (max(1, round(content.get_width() * ratio)), max(1, round(content.get_height() * ratio))))
-        rendered.blit(content, ((width - content.get_width()) // 2, (height - content.get_height()) // 2))
-        self._message_key, self._message_surface = message, rendered
-        return rendered
-
-    def _caption(self, text):
-        """Cache overhead text independently of the bottom note."""
-        if text == self._caption_key:
-            return self._caption_surface
+    def _header(self, text):
+        """Wrap the complete Unicode note, sharing one plain header lane."""
+        if text == self._header_key:
+            return self._header_surface
         clean = "".join(
             "\ufffd" if 0xD800 <= ord(c) <= 0xDFFF else
             " " if unicodedata.category(c) == "Cc" and c != "\n" else c
             for c in text
         )
         clean = "\n".join(line for line in clean.split("\n") if line.strip()) or " "
-        width, height = 558, 40
-        for size in range(28, 9, -1):
+        width, height = 576, 108
+        for size in range(32, 11, -1):
             font = self.message_fonts[size]
             lines = self._wrap(clean, font, width)
             line_height = font.get_linesize()
             if len(lines) * line_height <= height and all(font.size(line)[0] <= width for line in lines):
                 break
         else:
-            # Dense text still retains every character; only its changed layout
-            # is scaled, never the animation frame or the bottom-message cache.
+            # Excessive explicit newlines must not make 280 characters tiny.
             lines = self._wrap(" ".join(clean.split()), font, width)
         content_width = max(1, max(font.size(line)[0] for line in lines))
         content = pygame.Surface((content_width, max(1, len(lines) * line_height)), pygame.SRCALPHA)
@@ -246,34 +188,22 @@ class Renderer:
             content = pygame.transform.smoothscale(
                 content, (max(1, round(content.get_width() * ratio)), max(1, round(content.get_height() * ratio)))
             )
-        # Mask only the scene header, including its decorative dotted label.
-        rendered = pygame.Surface((586, 49))
-        rendered.fill(SCENE)
-        bubble_width = max(100, content.get_width() + 24)
-        bubble = pygame.Rect((586 - bubble_width) // 2, 1, bubble_width, 48)
-        pygame.draw.rect(rendered, CREAM, bubble, border_radius=8)
-        pygame.draw.rect(rendered, LINE, bubble, 1, border_radius=8)
-        rendered.blit(content, ((586 - content.get_width()) // 2, (49 - content.get_height()) // 2))
-        self._caption_key, self._caption_surface = text, rendered
+        rendered = pygame.Surface((width, height), pygame.SRCALPHA)
+        rendered.blit(content, ((width - content.get_width()) // 2, height - content.get_height()))
+        self._header_key, self._header_surface = text, rendered
         return rendered
 
     def _clock(self, surface, wall_time):
-        key = wall_time.strftime("%Y-%m-%d %H:%M:%S")
+        key = wall_time.strftime("%H:%M")
         if key != self._clock_key:
-            self._clock_text = (
-                self._text(wall_time.strftime("%H:%M"), 96),
-                self._text(wall_time.strftime("%S"), 34, TEAL),
-                self._fit_label(wall_time.strftime("%A").upper(), 24, 235),
-                self._fit_label(wall_time.strftime("%d %B %Y"), 22, 235),
-                self._text("LOCAL TIME", 14, MUTED),
-            )
+            self._clock_text.fill((0, 0, 0, 0))
+            x = 0
+            for character in key:
+                glyph = self._clock_glyphs[character]
+                self._clock_text.blit(glyph, (x, 0))
+                x += glyph.get_width() + 8
             self._clock_key = key
-        clock, seconds, day, date, label = self._clock_text
-        surface.blit(clock, (32, 60))
-        surface.blit(seconds, (284, 92))
-        surface.blit(label, (279, 76))
-        surface.blit(day, (371, 74))
-        surface.blit(date, (371, 103))
+        self._center(surface, self._clock_text, 320, 54)
 
     @staticmethod
     def _mug_graphic():
@@ -403,7 +333,6 @@ class Renderer:
         left_top = right_top = -32
         front_left = front_right = None
         stride = False
-        tap = 0.0
         ringing = False
         happy = state == "smile"
         scared_phase = t % 6.8
@@ -475,7 +404,7 @@ class Renderer:
             else:
                 amount = max(0.0, 1 - (phase - 8.5) / 2.7)
             amount = amount * amount * (3 - 2 * amount)
-            sx = sy = 1 + 3.6 * amount
+            sx = sy = 1 + 1.3 * amount
             # Keep the eye line centered while the body grows beyond the scene.
             y = 269 + 23 * (sy - 1)
             gaze_x = -6 if 2.5 <= phase < 4 else 6 if 4 <= phase < 5.5 else 0
@@ -493,18 +422,24 @@ class Renderer:
             gaze_x = gaze_y = 0
             y = 276 - round(abs(math.sin(t * math.pi * 1.5)) * 8)
 
+        # A fixed action layout keeps props in view without breathing/jitter.
+        scale = 1.65 if state in self._flags else 2.0
+        center_x = 176 if state in self._flags else 320
+        ground = 355 if state in self._flags else 348 if state == "cloud_engineering" else 346 if state == "ok" else 342
+
         def point(p):
-            return round(x + p[0] * sx), round(y + p[1] * sy)
+            return (round(center_x + (x - 320 + p[0] * sx) * scale),
+                    round(470 + (y - ground + p[1] * sy) * scale))
 
         def polygon(path, color, width=0):
-            pygame.draw.polygon(surface, color, [point(p) for p in path], width)
+            pygame.draw.polygon(surface, color, [point(p) for p in path], round(width * scale))
 
         def rect(box, color):
             rx, ry, rw, rh = box
             polygon(((rx, ry), (rx + rw, ry), (rx + rw, ry + rh), (rx, ry + rh)), color)
 
         def line(path, color=BLACK, width=3):
-            pygame.draw.lines(surface, color, False, [point(p) for p in path], width)
+            pygame.draw.lines(surface, color, False, [point(p) for p in path], round(width * scale))
 
         def ellipse(center, rx, ry, color, width=0):
             polygon([(center[0] + a * rx, center[1] + b * ry) for a, b in ELLIPSE], color, width)
@@ -515,8 +450,6 @@ class Renderer:
             inner = 56 if top < -32 else 68
             rect((inner if side > 0 else -88, top, 88 - inner, 3 - top), CORAL)
 
-        shadow_width = round(135 - max(0, 269 - y) * 0.9)
-        pygame.draw.ellipse(surface, SHADOW, (round(x - shadow_width / 2), 342, shadow_width, 10))
         if front_left is None:
             side_block(-1, left_top)
         if front_right is None:
@@ -539,7 +472,7 @@ class Renderer:
             if state in ("heart_eyes", "cloud_engineering"):
                 image = self._heart_morph[frame] if frame < len(self._heart_morph) else self._heart_pulse[(frame - len(self._heart_morph)) % len(self._heart_pulse)]
                 px, py = point((ex, ey))
-                surface.blit(image, (px - 21, py - 21))
+                surface.blit(image, image.get_rect(center=(px, py)))
             elif happy:
                 rect((ex - 10, ey, 6, 6), BLACK)
                 rect((ex - 4, ey - 6, 10, 6), BLACK)
@@ -575,16 +508,10 @@ class Renderer:
         elif state == "lens":
             surface.blit(self._lens, point((lens_x - 46, lens_y - 46)))
         elif state == "ok":
-            bx, by = point((-132, -67))
-            pygame.draw.rect(surface, CREAM, (bx - 9, by - 5, 55, 32), border_radius=4)
-            surface.blit(self._ok_text, (bx, by))
             line(((100, -43), (106, -37), (118, -49)), TEAL, 4)
         elif state == "knock":
             # A foreshortened block faces the front glass. Its contact face,
             # expanding rings and radial ticks replace the old side-door prop.
-            fx, fy, fw, fh = front_right
-            rect((fx, fy, 4, fh), (170, 96, 77))
-            rect((fx + 5, fy + 3, fw - 9, 3), (220, 148, 117))
             for center in (0.28, 0.57):
                 age = t % 1.8 - center
                 if 0 <= age < 0.28:
@@ -593,8 +520,6 @@ class Renderer:
                     for dx, dy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
                         line(((67 + dx * (radius + 5), 10 + dy * (radius + 2)),
                               (67 + dx * (radius + 11), 10 + dy * (radius + 8))), GOLD, 2)
-            if tap > 0.2:
-                surface.blit(self._tap_text, point((109, -28)))
         elif state == "waiting":
             for index in range(3):
                 ellipse((111 + index * 12, -45), 3, 3, TEAL if int(t * 2) % 3 == index else LINE)
@@ -623,44 +548,35 @@ class Renderer:
                     drop = -140 * (1 - (t / 0.95) ** 2)
                 elif t < 1.3:
                     drop = -8 * math.sin((t - 0.95) / 0.35 * math.pi)
-                if t >= 1.5:
-                    self._center(surface, self._deal_text, 320, 176)
             surface.blit(self._glasses, point((-90, -37 + drop)))
 
 
-    def draw(self, surface: pygame.Surface, snapshot: dict, wall_time: datetime.datetime) -> None:
-        """Render a complete frame; only snapshot elapsed time drives the action."""
+    def draw(
+        self, surface: pygame.Surface, snapshot: dict, wall_time: datetime.datetime,
+        wifi_status: str = "unavailable",
+    ) -> None:
+        """Draw a frame from cached network status and monotonic action time."""
         state = snapshot.get("state", "idle")
-        if state not in STATUS:
+        if state not in EVENT_DURATIONS:
             state = "idle"
         elapsed = max(0.0, float(snapshot.get("elapsed", 0.0)))
-        surface.blit(self.background, (0, 0))
-        self._clock(surface, wall_time)
-        # Moving Clawd goes behind the scene's window/bezel, never over the clock
-        # or the note. The scared route also passes beyond the full 640 px width.
+        surface.fill(PAPER)
         previous_clip = surface.get_clip()
-        surface.set_clip(previous_clip.clip(self._scene_rect))
-        caption = snapshot.get("caption")
-        if not caption and state == "cloud_engineering":
-            caption = "Cloud Engineering"
-        if caption:
-            # Reserve a separate caption lane rather than covering raised arms,
-            # jumping eyes or kite props. Reuse both native/scaled canvases.
-            self._caption_canvas.fill((0, 0, 0, 0))
-            self._character(self._caption_canvas, state, elapsed)
-            pygame.transform.scale(self._caption_view, (440, 154), self._caption_scaled)
-            surface.blit(self._caption_scaled, (100, 204))
-            surface.blit(self._caption(str(caption)), (27, 154))
-        else:
-            self._character(surface, state, elapsed)
+        # Protect the plain header while preserving deliberate close-up crops
+        # and the scared action's complete offscreen exit/return.
+        surface.set_clip(previous_clip.clip(self._art_rect))
+        self._character(surface, state, elapsed)
         surface.set_clip(previous_clip)
-        pygame.draw.rect(surface, LINE, (24, 151, 592, 209), 2, border_radius=9)
-        message = snapshot.get("message")
-        if message:
-            self._center(surface, self._message_label, 320, 380)
-            surface.blit(self._message(str(message)), (45, 397))
+        header = snapshot.get("caption") or snapshot.get("message")
+        if not header:
+            if state == "cloud_engineering":
+                header = "Cloud Engineering"
+            elif state == "deal_with_it" and elapsed >= 1.5:
+                header = "Deal with it."
+            elif state == "ok":
+                header = "OK!"
+        if header:
+            surface.blit(self._header(str(header)), (32, 42))
         else:
-            eyebrow, title, subtitle = self.status_text[state]
-            self._center(surface, eyebrow, 320, 382)
-            self._center(surface, title, 320, 403)
-            self._center(surface, subtitle, 320, 435)
+            self._clock(surface, wall_time)
+        surface.blit(self._wifi.get(wifi_status, self._wifi["unavailable"]), (WIDTH - 40, 14))

@@ -10,6 +10,7 @@ import threading
 import time
 
 from .model import Companion
+from .network import WifiMonitor
 from .server import Frames, create_server
 
 
@@ -69,6 +70,7 @@ def main():
         pygame.mouse.set_visible(not args.fullscreen)
         companion = Companion()
         renderer = Renderer()
+        wifi = WifiMonitor()
         frames = Frames() if args.preview else None
         server = create_server(args.host, args.port, companion, frames, token)
         thread = threading.Thread(target=server.serve_forever, name="pip-http", daemon=True)
@@ -93,7 +95,7 @@ def main():
                     running = False
                 elif event.type in (pygame.MOUSEBUTTONDOWN, pygame.FINGERDOWN):
                     companion.event("knock")
-            renderer.draw(canvas, companion.snapshot(), datetime.now())
+            renderer.draw(canvas, companion.snapshot(), datetime.now(), wifi_status=wifi.status())
             if args.rotation:
                 screen.blit(pygame.transform.rotate(canvas, args.rotation), (0, 0))
             pygame.display.flip()

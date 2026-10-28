@@ -1,6 +1,6 @@
 # Maclock Clawd: a desk companion
 
-A tiny animated Clawd, clock and notification display for a **640 × 480 landscape screen**. Built for a Raspberry Pi Zero W inside a Maclock enclosure, with a Mac preview for trying all 62 reactions before touching the hardware.
+An animated Clawd and calculator-style clock for a **640 × 480 landscape screen**. Built for a Raspberry Pi Zero W inside a Maclock enclosure, with a Mac preview for trying all 62 reactions before touching the hardware.
 
 **Some of the animations are my own custom creations, made specifically for this project. Other animations use the animation library from [claude.dev](https://claude.dev/). That library was the inspiration for this project's animation style and Clawd's movement.**
 
@@ -31,7 +31,9 @@ Keep the process running; stop it with Ctrl-C. If the browser reports `ERR_CONNE
 
 - Python and pygame render natively; the Pi needs no browser, LLM or runtime animation downloads.
 - Custom block-shaped poses sit alongside bundled frames from claude.dev. The side rectangles are Clawd's arms.
-- HTTP events select reactions; captions and bottom notes expire on timers while the clock/date stay visible.
+- A larger, consistently terracotta Clawd sits near the bottom of a flat sand background; no frame, date, slogans or lower status panel.
+- The raised, bold seven-segment clock shows only hours and minutes. API captions and timed messages replace it above Clawd without shrinking the artwork; reaction captions take priority over timed messages.
+- A small top-right Wi-Fi icon distinguishes connected, disconnected and unavailable radios. Linux link state refreshes every two seconds without Internet probes; this indicates Wi-Fi association, not Internet availability. Desktop previews without Linux sysfs show the unavailable icon.
 - The optional browser mirror shows the same native frames. The magnifying-glass animation uses no camera or microphone.
 
 Clawd and website artwork © Anthropic. Unofficial project; brand marks belong to their owners. See [artwork and redistribution notes](docs/artwork.md#source-attribution-and-redistribution).
@@ -40,4 +42,6 @@ Clawd and website artwork © Anthropic. Unofficial project; brand marks belong t
 
 The unit expects the source in `/opt/maclock-clawd`, distro `python3-pygame` 2.6.1, `libgbm1`, `libegl1`, `libgles2`, `libgl1-mesa-dri`, `fontconfig` and `fonts-dejavu-core`. Its `pipclock` system account needs the `video`, `render` and `input` groups; the service takes over `tty1` from getty.
 
-`--rotation 90` maps the logical 640 × 480 scene onto the panel's native 480 × 640 pixels. Angles are counterclockwise; use `270` for the opposite mounting, `180` for an upside-down landscape panel, or the default `0` for a normal landscape display. Browser previews stay landscape. The original Pi Zero W smoke run, including two native frame captures, averaged about 5 fps; the `--fps` setting is a ceiling, not a guaranteed rate.
+The unit explicitly selects `SDL_FRAMEBUFFER_ACCELERATION=opengles2` for VC4. SDL's automatic desktop OpenGL framebuffer renderer can otherwise produce an all-black scanout despite a healthy API and a correctly drawn CPU-side surface; verify the actual DRM framebuffer when diagnosing a blank panel.
+
+`--rotation 90` maps the logical 640 × 480 scene onto the panel's native 480 × 640 pixels. Angles are counterclockwise; use `270` for the opposite mounting, `180` for an upside-down landscape panel, or the default `0` for a normal landscape display. Browser previews stay landscape. The `--fps` setting is a ceiling, not a guaranteed rate on the original Pi Zero W.

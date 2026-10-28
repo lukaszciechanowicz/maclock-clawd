@@ -101,11 +101,12 @@ details{font-size:11px;color:var(--muted);margin-top:18px}summary{cursor:pointer
 <div class="demo-row"><button id="play-demo" aria-pressed="false">Play every action</button><button id="stop-demo" disabled>Stop demo</button></div>
 <p class="help" id="demo-help"></p>
 <div class="divider"></div>
-<h2>A note from the outside world</h2>
+<h2>Timed text above Clawd</h2>
 <label for="message">Message · up to 280 characters</label>
 <textarea id="message" rows="2" maxlength="280">Hey, human. Nice work today.</textarea>
 <label for="duration">Display time in seconds</label>
 <div class="row"><input id="duration" type="number" min="0.1" max="3600" step="0.1" value="8"><button id="send">Send a note</button></div>
+<p class="help">Replaces the clock while visible. A reaction caption takes priority; both timers continue independently.</p>
 <div class="divider"></div>
 <h2>A reaction with words above Clawd</h2>
 <label for="caption-mood">Reaction</label>
@@ -116,7 +117,7 @@ details{font-size:11px;color:var(--muted);margin-top:18px}summary{cursor:pointer
 <div class="row"><input id="caption-duration" type="number" min="0.1" max="3600" step="0.1" value="8"><button id="send-caption">Show reaction + caption</button></div>
 <p class="help">Uses GET /api/react?mood=…&amp;text=… . A new action replaces the caption. Use 12 seconds for the full closeup.</p>
 <details><summary>API authentication</summary><label for="token">Bearer token (only if configured; kept in memory)</label><input id="token" type="password" autocomplete="off" spellcheck="false"></details>
-<div class="notice" id="notice" role="status" aria-live="polite">Ready for a little desktop company.</div>
+<div class="notice" id="notice" role="status" aria-live="polite">Ready.</div>
 <div class="footer">NATIVE ARTWORK + BUNDLED WEBSITE FRAMES · PYTHON + SDL<br>This page mirrors the native display. The Pi needs no browser or network for animation.<br>Clawd and website source artwork © Anthropic. Unofficial project.<br>The magnifying glass is pretend: no camera or microphone access.</div>
 </section>
 </main>

@@ -31,20 +31,20 @@ curl --get http://127.0.0.1:8765/api/react \
 | `GET /health` | Public JSON liveness response. |
 | `GET /api/state` | Current snapshot: `state`, `elapsed`, `message`, `message_remaining`, `caption`, `caption_remaining`. |
 | `POST /api/event` | Any action listed below; optional `duration` in seconds, positive and at most 3600. Omit duration for the action default. |
-| `POST /api/message` | `text`: 1–280 Unicode characters; required `duration`: positive seconds, at most 3600. |
+| `POST /api/message` | Timed text above Clawd, replacing the clock: 1–280 Unicode characters; required `duration`: positive seconds, at most 3600. |
 | `GET /api/react?mood=wave&text=Hello!` | Atomically select a reaction and show text **above Clawd**; optional `duration`, default 8 seconds, positive and at most 3600. |
 | `POST /hooks/claude` | Claude Code JSON lifecycle payload; recognized events receive HTTP 204 with no decision output. |
 | `GET /`, `GET /frame.jpg` | Desktop HTML/JPEG mirror, only when `--preview` is enabled. |
 
-A new event immediately replaces the previous event; expiry returns to idle. An event does not clear an active message. Message expiry reveals the then-current live status, not a saved historical status. This is a single display, with no queue, durable history, multi-session aggregation or guaranteed delivery.
+A new event immediately replaces the previous event; expiry returns to idle. An event does not clear an active message. The display has one plain header above Clawd: a reaction caption takes priority over a timed message, then any built-in action title, then the hours-and-minutes clock. A message hidden behind a caption keeps its independent expiry timer and reappears only if it is still active when the caption clears. There is no bottom panel or date. This is a single display, with no queue, durable history, multi-session aggregation or guaranteed delivery.
 
 ## Reaction + overhead text
 
 `http://127.0.0.1:8765/api/react?mood=wave&text=Hello!` starts the wave and displays “Hello!” above Clawd for eight seconds. `mood` accepts **any name in the reaction table**; `text` must contain 1–280 printable Unicode characters, may include newlines, and must not be blank. Encode query values with `curl --get --data-urlencode` or `URLSearchParams`, especially for spaces, `&`, `+`, `#` and non-ASCII text.
 
-The optional `duration` controls **both** the chosen animation and caption. When it expires, Clawd returns to idle and the caption disappears; an `idle` reaction simply remains idle. Use `duration=12` for the full `closeup` approach, expression and return. A new reaction restarts the animation and replaces the caption. A subsequent `/api/event` or Claude hook clears the caption immediately, so stale text cannot accompany an unrelated action. Bottom `/api/message` notes remain independent. A supplied caption overrides the built-in “Cloud Engineering” title during that reaction.
+The optional `duration` controls **both** the chosen animation and caption. When it expires, Clawd returns to idle and the caption disappears; an `idle` reaction simply remains idle. Use `duration=12` for the full `closeup` approach, expression and return. A new reaction restarts the animation and replaces the caption. A subsequent `/api/event` or Claude hook clears the caption immediately, so stale text cannot accompany an unrelated action. Timed `/api/message` text remains independent and uses the same header only when no reaction caption is active. Supplied API text overrides the built-in action title.
 
-Text wraps/downscales in a reserved overhead lane; the action is fitted below it rather than hidden under the caption. Long captions use smaller lettering. Font coverage still depends on the device's installed fonts.
+Text wraps/downscales in a reserved overhead lane, replacing the clock rather than covering Clawd. The artwork stays the same enlarged size with and without text. Long captions use smaller lettering. Font coverage still depends on the device's installed fonts; the seven-segment clock itself needs no font file.
 
 Missing, blank, duplicate, unknown, malformed or invalid query values return HTTP 400 **without changing the current reaction, caption or note**. Authentication is the same bearer header as other API routes; never put a token in the URL. This is an intentionally state-changing GET for simple webhook/query integrations: do not embed it in remote images or prefetchable links. Cross-site browser requests and foreign `Origin` headers receive HTTP 403, including in token-free loopback mode. CLI requests and same-origin preview controls are supported. Query text can appear in client/proxy URL history, so do not send secrets.
 

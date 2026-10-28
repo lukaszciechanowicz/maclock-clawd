@@ -2,7 +2,7 @@
 
 [Back to README](../README.md) · [API reaction reference](api.md#reaction-summary) · [Artwork and attribution](artwork.md)
 
-All 62 reactions, rendered by the native display renderer. Categories, order and labels match the local preview; every category uses three columns. The clock/date is fixed for reproducible exports.
+All 62 reactions, rendered by the native display renderer. Categories, order and labels match the local preview; every category uses three columns. The example clock and connected Wi-Fi icon are fixed for reproducible exports.
 
 <!-- BEGIN ANIMATION GALLERY -->
 ## Everyday & custom

@@ -90,11 +90,11 @@ def export_gif(renderer, surface, event, count, destination):
         renderer.draw(surface, {
             "state": event, "elapsed": index / FPS,
             "message": None, "message_remaining": 0,
-        }, EXAMPLE_TIME)
+        }, EXAMPLE_TIME, wifi_status="connected")
         frame = Image.frombytes("RGB", (WIDTH, HEIGHT), pygame.image.tobytes(surface, "RGB"))
         frames.append(frame.resize(SIZE, Image.Resampling.NEAREST))
     # A shared palette avoids color flicker; nearest-neighbor/no dithering keeps
-    # Clawd's square pixels sharp. Static clock/date pixels compress away.
+    # Static clock/icon pixels compress away; time and Wi-Fi are fixed examples.
     sample_indices = list(range(0, count, max(1, count // 20)))[:24]
     palette_image = Image.new("RGB", (SIZE[0] * 4, SIZE[1] * math.ceil(len(sample_indices) / 4)))
     for index, source in enumerate(sample_indices):

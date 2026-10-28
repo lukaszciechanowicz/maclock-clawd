@@ -45,4 +45,4 @@ Run from the repository root:
 .venv/bin/python tools/render_gallery.py --print-markdown
 ```
 
-The exporter regenerates the GIFs and prints categorized, three-column tables for [the gallery document](gallery.md). Replace the content between its `BEGIN ANIMATION GALLERY` and `END ANIMATION GALLERY` markers with that output. Categories, order and labels come directly from the local preview controls in `pipclock/preview.html`. The fixed example clock/date keeps exports reproducible; GIFs are documentation assets and are not loaded by the Pi.
+The exporter regenerates the GIFs and prints categorized, three-column tables for [the gallery document](gallery.md). Replace the content between its `BEGIN ANIMATION GALLERY` and `END ANIMATION GALLERY` markers with that output. Categories, order and labels come directly from the local preview controls in `pipclock/preview.html`. The example clock and connected Wi-Fi icon are fixed for reproducible exports; GIFs are documentation assets and are not loaded by the Pi.

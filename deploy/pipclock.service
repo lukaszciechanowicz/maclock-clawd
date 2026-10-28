@@ -19,6 +19,8 @@ TTYVTDisallocate=yes
 WorkingDirectory=/opt/maclock-clawd
 Environment=PYTHONUNBUFFERED=1
 Environment=SDL_VIDEODRIVER=kmsdrm
+# VC4 exposes GLES2; SDL's desktop OpenGL framebuffer path can scan out black.
+Environment=SDL_FRAMEBUFFER_ACCELERATION=opengles2
 EnvironmentFile=-/etc/pipclock.env
 # No --preview: native rendering only, with no JPEG encoding.
 ExecStart=/usr/bin/python3 -m pipclock --host 127.0.0.1 --port 8765 --fullscreen --rotation 90

@@ -1,4 +1,4 @@
-"""Offline playback of baked website art, with one decoded atlas in memory."""
+"""Offline website artwork with one decoded atlas and one enlarged frame."""
 
 import json
 from pathlib import Path
@@ -17,7 +17,10 @@ class WebsiteAnimations:
             raise ValueError("Bundled Clawd animation catalog is incomplete; run tools/bake_clawd.py")
         self._event = None
         self._atlas = None
-        self._rectangles = ()
+        self._frames = ()
+        self._frame_number = None
+        self._scaled = None
+        self._position = (0, 0)
 
     @staticmethod
     def frame_index(entry, elapsed):
@@ -37,20 +40,39 @@ class WebsiteAnimations:
             # Release a large website atlas when returning to procedural art.
             self._event = None
             self._atlas = None
-            self._rectangles = ()
+            self._frames = ()
+            self._frame_number = None
+            self._scaled = None
             return False
         if state != self._event:
+            self._frames = ()
             self._atlas = None
             image = pygame.image.load(self._directory / entry["file"])
             self._atlas = image.convert_alpha() if pygame.display.get_surface() is not None else image
             width, height = entry["frame_size"]
             columns = entry["columns"]
-            self._rectangles = tuple(
-                pygame.Rect((index % columns) * width, (index // columns) * height, width, height)
+            self._frames = tuple(
+                self._atlas.subsurface(((index % columns) * width, (index // columns) * height, width, height))
                 for index in range(entry["frames"])
             )
+            # The atlas frame is the union of every pose, not today's bounding
+            # box. Fit once per action so jumping, flags and props cannot jitter.
+            scale = min(2.4, 592 / width, 292 / (height - 2))
+            size = (round(width * scale), round(height * scale))
+            # transform.scale copies pixel values without converting channel masks.
+            self._scaled = pygame.Surface(
+                size, pygame.SRCALPHA, self._atlas.get_bitsize(), self._atlas.get_masks()
+            )
+            offset_x, offset_y = entry["offset"]
+            self._position = (
+                max(24, min(616 - size[0], round(320 + offset_x * scale))),
+                round(470 + offset_y * scale),
+            )
+            self._frame_number = None
             self._event = state
         frame = self.frame_index(entry, elapsed)
-        offset_x, offset_y = entry["offset"]
-        surface.blit(self._atlas, (320 + offset_x, 343 + offset_y), self._rectangles[frame])
+        if frame != self._frame_number:
+            pygame.transform.scale(self._frames[frame], self._scaled.get_size(), self._scaled)
+            self._frame_number = frame
+        surface.blit(self._scaled, self._position)
         return True
