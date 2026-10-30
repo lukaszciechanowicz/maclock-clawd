@@ -362,7 +362,9 @@ The current GPIO/retro stage at `/home/lukasz/maclock-buttons.JqhvOL` contains c
 3. Copies the existing source and installed service unit into `/opt/maclock-clawd.before-redesign.XXXXXX`.
 4. Stops the service and extracts the release under `/opt/maclock-clawd`, without modifying the token file or persistent state directory.
 5. Installs the repository unit, reloads systemd and enables/starts the service with its runtime `gpio` group and GPIO19/GPIO26 defaults.
-6. Waits for native health and prints service state, pin configuration and the backup path. LAN authorization and rendered pixels are checked separately; health is not display proof.
+6. Waits for native health and checks that the API rejects unauthenticated requests and accepts the existing bearer token. It reads that token internally from the running service's environment, without printing it or copying it into staging.
+7. Appends missing `windows_bsod` and `windows_shutdown` entries through the authenticated idle API, preserving all existing entries/order and the interval. This is the requested one-time release enrollment, not a startup migration.
+8. Prints service state, pin configuration and the backup path. Rendered pixels still need a separate check; health is not display proof.
 
 The older `/home/lukasz/maclock-redesign.RFLoD6` stage belongs to the earlier LAN/text deployment and includes private `lan.env`; it is not the current release.
 
@@ -413,7 +415,7 @@ printf 'Previous source: %s\n' "$BACKUP"
 
 This preserves the existing token and idle settings outside the application tree. It assumes the already-provisioned service account, dependencies and environment. On a new image, provision those and the hardware first. Do not archive `.ssh`, private environment files, SD backups or cloud-init user-data.
 
-This GPIO update uses the already-installed `python3-gpiozero` and `python3-lgpio` packages. It adds `gpio` only to the service's `SupplementaryGroups`, not to the account's permanent group membership. No display/touch overlay, backlight setting, network profile, locale, sudo policy or token rotation is required. After updating an existing installation, append missing `windows_bsod` and `windows_shutdown` entries through the idle API, preserving the existing entries/order and interval; the updater itself never rewrites the saved group.
+This GPIO update uses the already-installed `python3-gpiozero` and `python3-lgpio` packages. It adds `gpio` only to the service's `SupplementaryGroups`, not to the account's permanent group membership. No display/touch overlay, backlight setting, network profile, locale, sudo policy or token rotation is required. The device-specific updater above enrolls the two retro entries once through the API; a generic archive extraction preserves the saved group unchanged, so append those names through the idle API if they should be eligible. Neither path changes the other entries/order or interval.
 
 ## Health checks and troubleshooting
 
@@ -473,6 +475,9 @@ The display/USB overlays were validated with Raspberry Pi firmware-aware `dtmerg
 
 For application release `148fd10`, 61 behavior/rendering tests passed, the actual browser mirror showed large text and right-to-left scrolling, and the real Pi test process restored an idle playlist after a cold process restart. Production API checks exercised 80/96 px text, atomic rejection of invalid size 97, caption expiry and a 5-second pool-to-reading rotation; the default 30-second playlist was restored and saved afterward. The systemd service was active/enabled with no automatic restarts. These are historical verification results, not a substitute for checking a device after future OS, display or application changes.
 
+For source release `92ff0d3`, **93 tests passed**. The running desktop UI showed both supplied retro backgrounds, delayed peek/blink/look and complete hiding. A separate, cleanly terminated application process on the actual Pi (Python 3.13.5, pygame 2.6.1, SDL 2.32.4; dummy display plus the real HTTP/JPEG path) exercised both scenes over 10-second durations: the sampled bottom-center color changed from blue/black to terracotta and back before returning to idle. It also rendered an 80 px API caption and verified its timed expiry. The real LGPIO driver claimed GPIO19/GPIO26 without root; injected GPIO edges exercised next/previous, wrapping, caption interruption, preserved messages and 10:1 idle counts. These are software-mirror and driver checks, **not a new native scanout, physical-switch press or reboot proof**. At publication, the native service cutover was awaiting fresh private sudo authentication; the previous native service remained active with zero automatic restarts.
+
+
 ## Release landmarks
 
 | Commit | Recorded outcome |
@@ -482,5 +487,6 @@ For application release `148fd10`, 61 behavior/rendering tests passed, the actua
 | `ed76a09` | Bundled approved DSEG calculator-clock font and license |
 | `e296219` | Configurable, bearer-authenticated native LAN API |
 | `148fd10` | Large scrolling text and configurable persistent idle playlist |
+| `92ff0d3` | Physical previous/next controls; two duration-capable retro scenes with 10:1 idle rarity; native deployment requires sudo |
 
 The final idle/text release was tested through production API calls and a separate Pi process cold restart; no second full-system reboot after that release is claimed. Rollback instructions are operational guidance, not a claim that a rollback was executed.
