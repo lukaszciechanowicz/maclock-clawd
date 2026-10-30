@@ -1,6 +1,6 @@
 # API
 
-[Back to README](../README.md) · [Animation gallery](gallery.md) · [Claude Code integration](claude-code.md) · [Raspberry Pi administration](raspberry-pi.md)
+[Back to README](../README.md) · [Animation gallery](gallery.md) · [Assistant hooks](hooks.md) ([Claude Code](hooks.md#claude-code) / [Codex](hooks.md#codex) / [OMP](hooks.md#omp)) · [Raspberry Pi administration](raspberry-pi.md)
 
 ## Client setup on this Mac
 
@@ -9,14 +9,45 @@ The deployed Pi accepts ordinary HTTP requests directly over the LAN; **no SSH o
 ```sh
 source "$HOME/Library/Application Support/maclock-clawd/api.env"
 export PIPCLOCK_TOKEN
-export PIPCLOCK_URL="${PIPCLOCK_URL:-http://192.168.1.57:8765}"
+export PIPCLOCK_URL="${PIPCLOCK_URL:-http://maclock.internal.krosno.cloud:8765}"
 ```
 
 Keep that file private (mode `0600`); never print its contents, commit it, or put the token in a URL. `PIPCLOCK_URL` can instead point to a local development server, such as `http://127.0.0.1:8765`. A token-free loopback server does not require sourcing the file; its API accepts requests without a bearer header. All examples below target the configured URL.
 
+The remote examples use **`http://maclock.internal.krosno.cloud:8765`**. Arrange DNS or a hosts-file entry so that name resolves to your Pi from the calling machine; it is not automatically provisioned. This is direct trusted-LAN HTTP: these instructions do **not** deploy TLS, HTTPS or a reverse proxy. Do not expose the bearer-token API to an untrusted network.
+
 `curl -q` must be the first curl option: it ignores `~/.curlrc`, including custom timing/metrics output that would otherwise contaminate JSON. `--fail-with-body` preserves API error JSON and returns a nonzero exit status for HTTP errors.
 
 ## Cookbook
+
+### Direct domain requests: custom message, BSOD and shutdown
+
+After loading `PIPCLOCK_TOKEN` above, these standalone requests address the Pi directly:
+
+```sh
+# Show your own text for 30 seconds, at 80 px.
+curl -q --silent --show-error --fail-with-body \
+  'http://maclock.internal.krosno.cloud:8765/api/message' \
+  -H "Authorization: Bearer $PIPCLOCK_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data '{"text":"Your custom message here","duration":30,"text_size":80}'
+
+# Play the blue-screen Easter Egg immediately.
+curl -q --silent --show-error --fail-with-body \
+  'http://maclock.internal.krosno.cloud:8765/api/event' \
+  -H "Authorization: Bearer $PIPCLOCK_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data '{"event":"windows_bsod","duration":20}'
+
+# Or play the shutdown Easter Egg (no real shutdown).
+curl -q --silent --show-error --fail-with-body \
+  'http://maclock.internal.krosno.cloud:8765/api/event' \
+  -H "Authorization: Bearer $PIPCLOCK_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data '{"event":"windows_shutdown","duration":20}'
+```
+
+Messages leave the animation unchanged, replace the clock and scroll rather than shrink; `text_size` accepts 32–96 px (default 64). Both Easter Eggs are **visual only**, default to 20 seconds, and peek once during seconds 3–8. Explicit requests bypass the automatic idle rarity of one appearance per ten appearances of each eligible normal action. See [Easter Eggs](#easter-eggs) for timing and caption details.
 
 ### Health and current snapshot
 
@@ -74,7 +105,7 @@ curl -q --silent --show-error --fail-with-body --get "$PIPCLOCK_URL/api/react" \
 
 Use `--data-urlencode` for each query value; manual concatenation breaks spaces, `+`, `&`, `#` and UTF-8 text. This request changes the animation and caption atomically.
 
-### Retro Windows scenes
+### Easter Eggs
 
 Both scenes use user-provided fullscreen backgrounds. They are **visual only**: no crash, restart or OS shutdown occurs.
 
@@ -181,6 +212,8 @@ The preview also exposes text-size controls and an idle-group picker. Only the p
 
 All **64 mood/event names** work with both `POST /api/event` and `GET /api/react`. The duration below applies only to `/api/event` when omitted; `/api/react` defaults to 8 seconds for both reaction and caption. The browser tour uses shorter samples for long-lived statuses.
 
+The [Finished gallery group](gallery.md#finished) offers these completion choices, in preview order: `wave`, `bounce`, `dance`, `dancing_happy`, `jumping_happy`, `breakdancing`, `confetti`, `confetti_happy`, `excited`, `pool`, `meditating`. They use the same event API as every other action, not a separate endpoint. Configure opt-in completion hooks separately for [Claude Code](hooks.md#claude-code), [Codex](hooks.md#codex) or [OMP](hooks.md#omp); the recommended completion action is `dance`.
+
 | Mood / event | Event default | What Clawd does | Artwork |
 | --- | --- | --- | --- |
 | `idle` | Until replaced | Run the configured idle playlist; the `idle` entry itself breathes quietly and blinks. | Custom + selected artwork |
@@ -266,7 +299,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-base = os.environ.get("PIPCLOCK_URL", "http://192.168.1.57:8765").rstrip("/")
+base = os.environ.get("PIPCLOCK_URL", "http://maclock.internal.krosno.cloud:8765").rstrip("/")
 token = os.environ["PIPCLOCK_TOKEN"]
 
 def request(path, payload=None):

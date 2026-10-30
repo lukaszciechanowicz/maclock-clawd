@@ -1,14 +1,14 @@
 {
   "hooks": {
-    "SessionStart": [{"hooks": [{"type": "http", "url": "http://127.0.0.1:8765/hooks/claude", "timeout": 2, "headers": {"Authorization": "Bearer ${PIPCLOCK_TOKEN}"}, "allowedEnvVars": ["PIPCLOCK_TOKEN"]}]}],
-    "UserPromptSubmit": [{"hooks": [{"type": "http", "url": "http://127.0.0.1:8765/hooks/claude", "timeout": 2, "headers": {"Authorization": "Bearer ${PIPCLOCK_TOKEN}"}, "allowedEnvVars": ["PIPCLOCK_TOKEN"]}]}],
-    "PreToolUse": [{"hooks": [{"type": "http", "url": "http://127.0.0.1:8765/hooks/claude", "timeout": 2, "headers": {"Authorization": "Bearer ${PIPCLOCK_TOKEN}"}, "allowedEnvVars": ["PIPCLOCK_TOKEN"]}]}],
-    "PostToolUse": [{"hooks": [{"type": "http", "url": "http://127.0.0.1:8765/hooks/claude", "timeout": 2, "headers": {"Authorization": "Bearer ${PIPCLOCK_TOKEN}"}, "allowedEnvVars": ["PIPCLOCK_TOKEN"]}]}],
-    "Stop": [{"hooks": [{"type": "http", "url": "http://127.0.0.1:8765/hooks/claude", "timeout": 2, "headers": {"Authorization": "Bearer ${PIPCLOCK_TOKEN}"}, "allowedEnvVars": ["PIPCLOCK_TOKEN"]}]}],
-    "Notification": [{"hooks": [{"type": "http", "url": "http://127.0.0.1:8765/hooks/claude", "timeout": 2, "headers": {"Authorization": "Bearer ${PIPCLOCK_TOKEN}"}, "allowedEnvVars": ["PIPCLOCK_TOKEN"]}]}],
-    "PermissionRequest": [{"hooks": [{"type": "http", "url": "http://127.0.0.1:8765/hooks/claude", "timeout": 2, "headers": {"Authorization": "Bearer ${PIPCLOCK_TOKEN}"}, "allowedEnvVars": ["PIPCLOCK_TOKEN"]}]}],
-    "PostToolUseFailure": [{"hooks": [{"type": "http", "url": "http://127.0.0.1:8765/hooks/claude", "timeout": 2, "headers": {"Authorization": "Bearer ${PIPCLOCK_TOKEN}"}, "allowedEnvVars": ["PIPCLOCK_TOKEN"]}]}],
-    "StopFailure": [{"hooks": [{"type": "http", "url": "http://127.0.0.1:8765/hooks/claude", "timeout": 2, "headers": {"Authorization": "Bearer ${PIPCLOCK_TOKEN}"}, "allowedEnvVars": ["PIPCLOCK_TOKEN"]}]}],
-    "SessionEnd": [{"hooks": [{"type": "http", "url": "http://127.0.0.1:8765/hooks/claude", "timeout": 2, "headers": {"Authorization": "Bearer ${PIPCLOCK_TOKEN}"}, "allowedEnvVars": ["PIPCLOCK_TOKEN"]}]}]
+    "SessionStart": [{"hooks": [{"type": "command", "command": "python3 \"$PIPCLOCK_HOOK_SCRIPT\" claude", "timeout": 3}]}],
+    "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "python3 \"$PIPCLOCK_HOOK_SCRIPT\" claude", "timeout": 3}]}],
+    "PreToolUse": [{"hooks": [{"type": "command", "command": "python3 \"$PIPCLOCK_HOOK_SCRIPT\" claude", "timeout": 3}]}],
+    "PostToolUse": [{"hooks": [{"type": "command", "command": "python3 \"$PIPCLOCK_HOOK_SCRIPT\" claude", "timeout": 3}]}],
+    "Stop": [{"hooks": [{"type": "command", "command": "python3 \"$PIPCLOCK_HOOK_SCRIPT\" claude", "timeout": 3}]}],
+    "Notification": [{"hooks": [{"type": "command", "command": "python3 \"$PIPCLOCK_HOOK_SCRIPT\" claude", "timeout": 3}]}],
+    "PermissionRequest": [{"hooks": [{"type": "command", "command": "python3 \"$PIPCLOCK_HOOK_SCRIPT\" claude", "timeout": 3}]}],
+    "PostToolUseFailure": [{"hooks": [{"type": "command", "command": "python3 \"$PIPCLOCK_HOOK_SCRIPT\" claude", "timeout": 3}]}],
+    "StopFailure": [{"hooks": [{"type": "command", "command": "python3 \"$PIPCLOCK_HOOK_SCRIPT\" claude", "timeout": 3}]}],
+    "SessionEnd": [{"hooks": [{"type": "command", "command": "python3 \"$PIPCLOCK_HOOK_SCRIPT\" claude", "timeout": 3}]}]
   }
 }

@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [{"hooks": [{"type": "http", "url": "http://maclock.internal.krosno.cloud:8765/hooks/claude", "timeout": 2, "headers": {"Authorization": "Bearer ${PIPCLOCK_TOKEN}"}, "allowedEnvVars": ["PIPCLOCK_TOKEN"]}]}],
+    "UserPromptSubmit": [{"hooks": [{"type": "http", "url": "http://maclock.internal.krosno.cloud:8765/hooks/claude", "timeout": 2, "headers": {"Authorization": "Bearer ${PIPCLOCK_TOKEN}"}, "allowedEnvVars": ["PIPCLOCK_TOKEN"]}]}],
+    "PreToolUse": [{"hooks": [{"type": "http", "url": "http://maclock.internal.krosno.cloud:8765/hooks/claude", "timeout": 2, "headers": {"Authorization": "Bearer ${PIPCLOCK_TOKEN}"}, "allowedEnvVars": ["PIPCLOCK_TOKEN"]}]}],
+    "PostToolUse": [{"hooks": [{"type": "http", "url": "http://maclock.internal.krosno.cloud:8765/hooks/claude", "timeout": 2, "headers": {"Authorization": "Bearer ${PIPCLOCK_TOKEN}"}, "allowedEnvVars": ["PIPCLOCK_TOKEN"]}]}],
+    "Stop": [{"hooks": [{"type": "http", "url": "http://maclock.internal.krosno.cloud:8765/hooks/claude", "timeout": 2, "headers": {"Authorization": "Bearer ${PIPCLOCK_TOKEN}"}, "allowedEnvVars": ["PIPCLOCK_TOKEN"]}]}],
+    "Notification": [{"hooks": [{"type": "http", "url": "http://maclock.internal.krosno.cloud:8765/hooks/claude", "timeout": 2, "headers": {"Authorization": "Bearer ${PIPCLOCK_TOKEN}"}, "allowedEnvVars": ["PIPCLOCK_TOKEN"]}]}],
+    "PermissionRequest": [{"hooks": [{"type": "http", "url": "http://maclock.internal.krosno.cloud:8765/hooks/claude", "timeout": 2, "headers": {"Authorization": "Bearer ${PIPCLOCK_TOKEN}"}, "allowedEnvVars": ["PIPCLOCK_TOKEN"]}]}],
+    "PostToolUseFailure": [{"hooks": [{"type": "http", "url": "http://maclock.internal.krosno.cloud:8765/hooks/claude", "timeout": 2, "headers": {"Authorization": "Bearer ${PIPCLOCK_TOKEN}"}, "allowedEnvVars": ["PIPCLOCK_TOKEN"]}]}],
+    "StopFailure": [{"hooks": [{"type": "http", "url": "http://maclock.internal.krosno.cloud:8765/hooks/claude", "timeout": 2, "headers": {"Authorization": "Bearer ${PIPCLOCK_TOKEN}"}, "allowedEnvVars": ["PIPCLOCK_TOKEN"]}]}],
+    "SessionEnd": [{"hooks": [{"type": "http", "url": "http://maclock.internal.krosno.cloud:8765/hooks/claude", "timeout": 2, "headers": {"Authorization": "Bearer ${PIPCLOCK_TOKEN}"}, "allowedEnvVars": ["PIPCLOCK_TOKEN"]}]}]
+  }
+}

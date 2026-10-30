@@ -4,6 +4,8 @@
 
 All 64 reactions, rendered by the native display renderer. Categories, order and labels match the local preview; every category uses three columns. The example clock and connected Wi-Fi icon are fixed for reproducible exports; retro Windows scenes omit the clock and show a single delayed peek in each 10-second sample. Their user-provided backgrounds are visual only, never an actual crash or shutdown.
 
+Choose [Finished](#finished) for waving, dancing or chilling after work; these are existing actions regrouped for discovery, not a new API mode. Their claude.dev source credits remain in the [reaction reference](api.md#reaction-summary). [Easter Eggs](#easter-eggs) includes both the [Windows blue-screen GIF](gallery/windows_bsod.gif) and [Windows shutdown GIF](gallery/windows_shutdown.gif).
+
 <!-- BEGIN ANIMATION GALLERY -->
 ## Everyday & custom
 
@@ -49,29 +51,29 @@ All 64 reactions, rendered by the native display renderer. Categories, order and
 
 <table>
   <tr>
-    <td align="center" width="33%"><strong>Header wave</strong><br><code>wave</code><br><img src="gallery/wave.gif" alt="Animated Clawd: Header wave" width="300" height="225"></td>
     <td align="center" width="33%"><strong>Look around</strong><br><code>looking</code><br><img src="gallery/looking.gif" alt="Animated Clawd: Look around" width="300" height="225"></td>
     <td align="center" width="33%"><strong>Go for a walk</strong><br><code>walking</code><br><img src="gallery/walking.gif" alt="Animated Clawd: Go for a walk" width="300" height="225"></td>
-  </tr>
-  <tr>
-    <td align="center" width="33%"><strong>Jump</strong><br><code>bounce</code><br><img src="gallery/bounce.gif" alt="Animated Clawd: Jump" width="300" height="225"></td>
     <td align="center" width="33%"><strong>Think</strong><br><code>thinking</code><br><img src="gallery/thinking.gif" alt="Animated Clawd: Think" width="300" height="225"></td>
-    <td align="center" width="33%"><strong>Turn around</strong><br><code>turning</code><br><img src="gallery/turning.gif" alt="Animated Clawd: Turn around" width="300" height="225"></td>
   </tr>
   <tr>
+    <td align="center" width="33%"><strong>Turn around</strong><br><code>turning</code><br><img src="gallery/turning.gif" alt="Animated Clawd: Turn around" width="300" height="225"></td>
     <td align="center" width="33%"><strong>Laptop time</strong><br><code>laptop</code><br><img src="gallery/laptop.gif" alt="Animated Clawd: Laptop time" width="300" height="225"></td>
     <td align="center" width="33%"><strong>Check the phone</strong><br><code>phone</code><br><img src="gallery/phone.gif" alt="Animated Clawd: Check the phone" width="300" height="225"></td>
-    <td align="center" width="33%"><strong>Desktop time</strong><br><code>desktop</code><br><img src="gallery/desktop.gif" alt="Animated Clawd: Desktop time" width="300" height="225"></td>
   </tr>
   <tr>
+    <td align="center" width="33%"><strong>Desktop time</strong><br><code>desktop</code><br><img src="gallery/desktop.gif" alt="Animated Clawd: Desktop time" width="300" height="225"></td>
     <td align="center" width="33%"><strong>Take notes</strong><br><code>notebook</code><br><img src="gallery/notebook.gif" alt="Animated Clawd: Take notes" width="300" height="225"></td>
     <td align="center" width="33%"><strong>Headphones on</strong><br><code>headphones</code><br><img src="gallery/headphones.gif" alt="Animated Clawd: Headphones on" width="300" height="225"></td>
-    <td align="center" width="33%"><strong>Check the watch</strong><br><code>watch</code><br><img src="gallery/watch.gif" alt="Animated Clawd: Check the watch" width="300" height="225"></td>
   </tr>
   <tr>
+    <td align="center" width="33%"><strong>Check the watch</strong><br><code>watch</code><br><img src="gallery/watch.gif" alt="Animated Clawd: Check the watch" width="300" height="225"></td>
     <td align="center" width="33%"><strong>Take a nap</strong><br><code>sleeping</code><br><img src="gallery/sleeping.gif" alt="Animated Clawd: Take a nap" width="300" height="225"></td>
     <td align="center" width="33%"><strong>A bright idea</strong><br><code>lightbulb</code><br><img src="gallery/lightbulb.gif" alt="Animated Clawd: A bright idea" width="300" height="225"></td>
+  </tr>
+  <tr>
     <td align="center" width="33%"><strong>Make a spark</strong><br><code>spark</code><br><img src="gallery/spark.gif" alt="Animated Clawd: Make a spark" width="300" height="225"></td>
+    <td aria-hidden="true"></td>
+    <td aria-hidden="true"></td>
   </tr>
 </table>
 
@@ -100,27 +102,32 @@ All 64 reactions, rendered by the native display renderer. Categories, order and
   </tr>
   <tr>
     <td align="center" width="33%"><strong>Arcade break</strong><br><code>arcade</code><br><img src="gallery/arcade.gif" alt="Animated Clawd: Arcade break" width="300" height="225"></td>
-    <td align="center" width="33%"><strong>Meditate</strong><br><code>meditating</code><br><img src="gallery/meditating.gif" alt="Animated Clawd: Meditate" width="300" height="225"></td>
+    <td aria-hidden="true"></td>
     <td aria-hidden="true"></td>
   </tr>
 </table>
 
-## From claude.dev · celebrations
+## Finished
 
 <table>
   <tr>
-    <td align="center" width="33%"><strong>Get excited</strong><br><code>excited</code><br><img src="gallery/excited.gif" alt="Animated Clawd: Get excited" width="300" height="225"></td>
-    <td align="center" width="33%"><strong>Happy jumps</strong><br><code>jumping_happy</code><br><img src="gallery/jumping_happy.gif" alt="Animated Clawd: Happy jumps" width="300" height="225"></td>
+    <td align="center" width="33%"><strong>Header wave</strong><br><code>wave</code><br><img src="gallery/wave.gif" alt="Animated Clawd: Header wave" width="300" height="225"></td>
+    <td align="center" width="33%"><strong>Jump</strong><br><code>bounce</code><br><img src="gallery/bounce.gif" alt="Animated Clawd: Jump" width="300" height="225"></td>
     <td align="center" width="33%"><strong>Dance</strong><br><code>dance</code><br><img src="gallery/dance.gif" alt="Animated Clawd: Dance" width="300" height="225"></td>
   </tr>
   <tr>
-    <td align="center" width="33%"><strong>Confetti</strong><br><code>confetti</code><br><img src="gallery/confetti.gif" alt="Animated Clawd: Confetti" width="300" height="225"></td>
     <td align="center" width="33%"><strong>Happy dance</strong><br><code>dancing_happy</code><br><img src="gallery/dancing_happy.gif" alt="Animated Clawd: Happy dance" width="300" height="225"></td>
+    <td align="center" width="33%"><strong>Happy jumps</strong><br><code>jumping_happy</code><br><img src="gallery/jumping_happy.gif" alt="Animated Clawd: Happy jumps" width="300" height="225"></td>
     <td align="center" width="33%"><strong>Breakdance</strong><br><code>breakdancing</code><br><img src="gallery/breakdancing.gif" alt="Animated Clawd: Breakdance" width="300" height="225"></td>
   </tr>
   <tr>
+    <td align="center" width="33%"><strong>Confetti</strong><br><code>confetti</code><br><img src="gallery/confetti.gif" alt="Animated Clawd: Confetti" width="300" height="225"></td>
     <td align="center" width="33%"><strong>Happy confetti</strong><br><code>confetti_happy</code><br><img src="gallery/confetti_happy.gif" alt="Animated Clawd: Happy confetti" width="300" height="225"></td>
-    <td aria-hidden="true"></td>
+    <td align="center" width="33%"><strong>Get excited</strong><br><code>excited</code><br><img src="gallery/excited.gif" alt="Animated Clawd: Get excited" width="300" height="225"></td>
+  </tr>
+  <tr>
+    <td align="center" width="33%"><strong>Float in the pool</strong><br><code>pool</code><br><img src="gallery/pool.gif" alt="Animated Clawd: Float in the pool" width="300" height="225"></td>
+    <td align="center" width="33%"><strong>Meditate</strong><br><code>meditating</code><br><img src="gallery/meditating.gif" alt="Animated Clawd: Meditate" width="300" height="225"></td>
     <td aria-hidden="true"></td>
   </tr>
 </table>
@@ -138,14 +145,9 @@ All 64 reactions, rendered by the native display renderer. Categories, order and
     <td align="center" width="33%"><strong>Ride a bike</strong><br><code>bike</code><br><img src="gallery/bike.gif" alt="Animated Clawd: Ride a bike" width="300" height="225"></td>
     <td align="center" width="33%"><strong>Float in space</strong><br><code>astronaut</code><br><img src="gallery/astronaut.gif" alt="Animated Clawd: Float in space" width="300" height="225"></td>
   </tr>
-  <tr>
-    <td align="center" width="33%"><strong>Float in the pool</strong><br><code>pool</code><br><img src="gallery/pool.gif" alt="Animated Clawd: Float in the pool" width="300" height="225"></td>
-    <td aria-hidden="true"></td>
-    <td aria-hidden="true"></td>
-  </tr>
 </table>
 
-## Retro Windows
+## Easter Eggs
 
 <table>
   <tr>

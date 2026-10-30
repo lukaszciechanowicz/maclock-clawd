@@ -16,10 +16,13 @@ StandardError=journal
 TTYReset=yes
 TTYVHangup=yes
 TTYVTDisallocate=yes
-WorkingDirectory=/opt/maclock-clawd
+WorkingDirectory=/run/pipclock
+RuntimeDirectory=pipclock
+RuntimeDirectoryMode=0700
 StateDirectory=pipclock
 StateDirectoryMode=0700
 Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONPATH=/opt/maclock-clawd
 Environment=PIPCLOCK_HOST=127.0.0.1
 Environment=PIPCLOCK_IDLE_CONFIG=/var/lib/pipclock/idle.json
 Environment=PIPCLOCK_BUTTON_PREV=19

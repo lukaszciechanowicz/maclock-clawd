@@ -1,6 +1,6 @@
 # Raspberry Pi: configuration, changes and operations
 
-[Back to README](../README.md) · [API cookbook](api.md) · [Claude Code integration](claude-code.md)
+[Back to README](../README.md) · [API cookbook](api.md) · [Assistant hooks](hooks.md)
 
 This guide records the deployed Maclock device and the changes made while provisioning, repairing and deploying it. It separates existing Imager/user settings from assistant changes. Provisioning commands are for a new or repaired system; do not blindly reapply them to the working Pi. Ordinary API requests need neither SSH nor sudo.
 
@@ -16,10 +16,12 @@ This guide records the deployed Maclock device and the changes made while provis
 | Hostname / administrator | `maclock` / `lukasz`, originally provisioned by Imager |
 | Current Wi-Fi LAN address | `192.168.1.57/24`; user changed it from `192.168.1.212` |
 | USB gadget address | `usb0`, `10.12.194.1/28`, managed by the official USB gadget/NetworkManager setup |
-| Native API | `http://192.168.1.57:8765`, bearer authentication required for `/api/*` and `/hooks/*` |
+| Native API | Port `8765`, bearer authentication required for `/api/*` and `/hooks/*`; hostname example below |
 | Rendering | Python 3.13, pygame 2.6.1, SDL KMSDRM and VC4 GLES2; no desktop/browser on the Pi |
 
 No router/DHCP-reservation change was made by the application deployment. Do not treat the current LAN address as a portable default for another installation. The Wi-Fi badge reports radio/link association, not Internet reachability; a working USB link is not evidence that Wi-Fi is connected.
+
+Remote examples use **`http://maclock.internal.krosno.cloud:8765`**. Configure DNS or a client hosts entry to resolve that name to the Pi's current LAN address before using them; the name did not resolve during this repair. No DNS record, hosts entry, TLS certificate or reverse proxy was installed. The address above is the observed device inventory, not the example hostname; the server still binds numeric `0.0.0.0`, not a DNS name.
 
 ### Relevant installed packages
 
@@ -73,12 +75,15 @@ SDL pulls in some X11/Wayland/audio libraries; that does not mean a desktop sess
 | `/etc/systemd/system/pipclock.service` | Installed copy of [the repository unit](../deploy/pipclock.service) |
 | `/etc/systemd/system/pipclock.service.pre-gles2` | Retained pre-fix unit, root-owned `0644`; **not** a known-good display rollback |
 | `/etc/pipclock.env` | Root-owned mode `0600`: LAN host and secret bearer token; never commit |
+| `/run/pipclock` | Systemd-created private working/runtime directory, `pipclock:pipclock`, mode `0700`; lgpio notification FIFO, recreated at service start |
 | `/var/lib/pipclock` | Systemd-created state directory, `pipclock:pipclock`, mode `0700` |
 | `/var/lib/pipclock/idle.json` | Atomic mode-`0600` idle playlist settings, owned by the service account |
 | `/home/lukasz/maclock-redesign.RFLoD6` | Retained device-specific release archive, checksum, `install.sh` and private `lan.env`; not a second running service |
+| `/home/lukasz/maclock-buttons.JqhvOL` | Current credential-free release archive/checksum and existing-device updater |
+| `/home/lukasz/maclock-runtime-fix.Lh7nNo/pipclock.service.before-runtime` | Saved unit from before the GPIO working-directory repair; forensic backup, **not** a working rollback |
 | `/opt/maclock-clawd.before-redesign.*` | Root-created application-source snapshots taken before release replacement |
 
-The `pipclock` system account has home `/opt/maclock-clawd`, shell `/usr/sbin/nologin`, and the `video`, `render` and `input` supplementary groups. It is not the SSH administrator account. Its source directory remains root-owned; application writes go to the separate state directory.
+The `pipclock` system account has home `/opt/maclock-clawd`, shell `/usr/sbin/nologin`, and the `video`, `render` and `input` supplementary groups. It is not the SSH administrator account. Its source directory remains root-owned; persistent settings go to `/var/lib/pipclock`, transient GPIO IPC goes to private `/run/pipclock`, and `gpio` is granted by the service unit at runtime.
 
 These were the account/directory provisioning commands, for a **new** system only; do not recreate the existing account:
 
@@ -268,7 +273,7 @@ The output may contain provisioning details: keep it private and do not commit i
 Run the complete command in a normal Mac terminal:
 
 ```sh
-ssh -i "$HOME/.ssh/omp_tmp_raspbery" lukasz@192.168.1.57
+ssh -i "$HOME/.ssh/omp_tmp_raspbery" lukasz@maclock.internal.krosno.cloud
 ```
 
 The key is an **argument to `ssh -i`**, not an executable. Do not run the key's path as a command or `chmod +x` it. Key-based SSH login and sudo are separate: the key avoids an SSH password prompt; administrative commands can still require the Pi account's password.
@@ -308,7 +313,7 @@ Do not paper over an unavailable locale by exporting a permanent `LC_ALL`; gener
 
 ## Native service and black-screen fix
 
-[deploy/pipclock.service](../deploy/pipclock.service) is the authoritative unit source. It runs `/usr/bin/python3 -m pipclock` from `/opt/maclock-clawd` as `pipclock`, with fullscreen output, port 8765 and application rotation 90.
+[deploy/pipclock.service](../deploy/pipclock.service) is the authoritative unit source. It runs `/usr/bin/python3 -m pipclock` as `pipclock`, with fullscreen output, port 8765 and application rotation 90. `WorkingDirectory=/run/pipclock` supplies writable GPIO IPC space; `PYTHONPATH=/opt/maclock-clawd` imports the read-only source and assets.
 
 Important integration settings:
 
@@ -317,6 +322,7 @@ Important integration settings:
 - `SDL_VIDEODRIVER=kmsdrm` selects native display output.
 - **`SDL_FRAMEBUFFER_ACCELERATION=opengles2`** selects VC4's supported GLES2 framebuffer path.
 - `StateDirectory=pipclock`, mode `0700`, provides persistent writable storage without making application source writable.
+- `RuntimeDirectory=pipclock`, mode `0700`, provides a private writable working directory for lgpio notification FIFOs. Systemd removes it on stop and recreates it on start; persistent idle settings remain separate.
 - `NoNewPrivileges=true`, `UMask=0077` and `Restart=on-failure` retain the service's restricted execution model.
 - Native production does **not** enable `--preview`, so no JPEG encoding/browser process is needed on the Pi.
 
@@ -324,9 +330,22 @@ The black-panel fault was not simply an API failure: Python/pygame could draw a 
 
 Do not reintroduce the rejected workarounds: `pygame.SCALED`, `LIBGL_ALWAYS_SOFTWARE=1` or a forced desktop OpenGL path. An experimental `SDL_RENDER_DRIVER=opengles2` demonstrated the cause, but the permanent setting is **`SDL_FRAMEBUFFER_ACCELERATION=opengles2`**. Temporary `/run/systemd/system/pipclock.service.d/presentation-diagnostic.conf`, diagnostic Python files, one-time `maclock-boot-proof.service` and boot/scanout helpers were removed after verification. They are not permanent services; `/run` proof files were volatile evidence.
 
+### GPIO startup failure after enabling buttons
+
+The GPIO/retro deployment initially exited with status **2** before opening port 8765, leaving a black panel and repeatedly restarting. A transient diagnostic service using the real service account, supplementary groups and original working directory exposed the cause:
+
+```text
+xCreatePipe: Can't set permissions ... /opt/maclock-clawd/.lgd-nfy0
+FileNotFoundError: ... '.lgd-nfy-3'
+```
+
+The `lgpio` import creates a notification FIFO in the process working directory. `/opt/maclock-clawd` is deliberately root-owned and not writable by `pipclock`; adding the `gpio` group does not grant filesystem write access there. The earlier successful driver probe ran in administrator-owned staging, so it did not exercise this service-directory constraint.
+
+The permanent fix is the private `/run/pipclock` working directory plus explicit `PYTHONPATH` above. Do **not** make `/opt/maclock-clawd` writable, disable the buttons, or suppress the initialization error. The deployed unit and its source copy were updated; its previous unit was saved in the runtime-fix stage. The failure counter was reset before a clean start. Display overlays, GLES2 selection, token, locales, Wi-Fi and sudo policy were unchanged.
+
 ### Application and artwork installed on the Pi
 
-The current application catalog has **64 actions**. Normal scenes use terracotta Clawd on sand with enlarged lower-positioned artwork and an hours/minutes-only clock, without the old footer/date/slogans. The two user-provided retro Windows backgrounds instead fill the screen and omit the clock and normal body/footer; the Wi-Fi badge and API text remain available. `windows_bsod` and `windows_shutdown` are visual-only effects, never a real crash, restart or shutdown. Each defaults to 20 seconds and has one peek starting at 3 seconds and ending at 8 seconds; shorter-than-3-second triggers expire before the peek. See the [duration-20 API examples](api.md#retro-windows-scenes) and the [artwork credits](artwork.md).
+The current application catalog has **64 actions**. Normal scenes use terracotta Clawd on sand with enlarged lower-positioned artwork and an hours/minutes-only clock, without the old footer/date/slogans. The two user-provided Windows backgrounds in [Easter Eggs](gallery.md#easter-eggs) instead fill the screen and omit the clock and normal body/footer; the Wi-Fi badge and API text remain available. `windows_bsod` and `windows_shutdown` are visual-only effects, never a real crash, restart or shutdown. Each defaults to 20 seconds and has one peek starting at 3 seconds and ending at 8 seconds; shorter-than-3-second triggers expire before the peek. See the [duration-20 API examples](api.md#easter-eggs) and the [artwork credits](artwork.md).
 
 `pipclock/assets/fonts/DSEG7Classic-Regular.ttf` and its OFL license are bundled application assets. DSEG was **not** installed as a global system font. Artwork sources and font licensing are documented in [artwork and attribution](artwork.md).
 
@@ -361,7 +380,7 @@ The current GPIO/retro stage at `/home/lukasz/maclock-buttons.JqhvOL` contains c
 2. Checks the existing `pipclock` account, private `/etc/pipclock.env` and installed GPIO imports before stopping anything.
 3. Copies the existing source and installed service unit into `/opt/maclock-clawd.before-redesign.XXXXXX`.
 4. Stops the service and extracts the release under `/opt/maclock-clawd`, without modifying the token file or persistent state directory.
-5. Installs the repository unit, reloads systemd and enables/starts the service with its runtime `gpio` group and GPIO19/GPIO26 defaults.
+5. Installs the repository unit, reloads systemd and enables/starts the service with its private runtime directory, explicit source import path, runtime `gpio` group and GPIO19/GPIO26 defaults.
 6. Waits for native health and checks that the API rejects unauthenticated requests and accepts the existing bearer token. It reads that token internally from the running service's environment, without printing it or copying it into staging.
 7. Appends missing `windows_bsod` and `windows_shutdown` entries through the authenticated idle API, preserving all existing entries/order and the interval. This is the requested one-time release enrollment, not a startup migration.
 8. Prints service state, pin configuration and the backup path. Rendered pixels still need a separate check; health is not display proof.
@@ -371,7 +390,7 @@ The older `/home/lukasz/maclock-redesign.RFLoD6` stage belongs to the earlier LA
 From the Mac, this one-time administration command is:
 
 ```sh
-ssh -t -i "$HOME/.ssh/omp_tmp_raspbery" lukasz@192.168.1.57 \
+ssh -t -i "$HOME/.ssh/omp_tmp_raspbery" lukasz@maclock.internal.krosno.cloud \
   'sudo sh /home/lukasz/maclock-buttons.JqhvOL/install.sh'
 ```
 
@@ -384,7 +403,7 @@ On the Mac, commit the intended release first. From the repository root, prepare
 ```sh
 (
 set -e
-PI=lukasz@192.168.1.57
+PI=lukasz@maclock.internal.krosno.cloud
 KEY="$HOME/.ssh/omp_tmp_raspbery"
 LOCAL_RELEASE=$(mktemp -d)
 trap 'rm -rf "$LOCAL_RELEASE"' EXIT
@@ -433,7 +452,7 @@ ss -ltn
 From the Mac, use the [authenticated API cookbook](api.md#health-and-current-snapshot). A public health check is:
 
 ```sh
-curl -q --silent --show-error --fail-with-body http://192.168.1.57:8765/health
+curl -q --silent --show-error --fail-with-body http://maclock.internal.krosno.cloud:8765/health
 ```
 
 | Symptom | Meaning / next check |
@@ -443,6 +462,7 @@ curl -q --silent --show-error --fail-with-body http://192.168.1.57:8765/health
 | HTTP `404` on `/` or `/frame.jpg` | Expected for native production: preview is not enabled. |
 | `sudo: a password is required` | Administrative authorization is missing; run the interactive SSH command, not repeated noninteractive retries. |
 | Healthy API, lit but black panel | Inspect the native unit, tty/session/device permissions and especially `SDL_FRAMEBUFFER_ACCELERATION=opengles2`; health is not scanout verification. |
+| Exit status `2`, closed API port, `.lgd-nfy*` error | lgpio cannot create its FIFO in a read-only working directory; use the shipped `/run/pipclock` runtime directory and `PYTHONPATH`, not writable application source. |
 | Idle-setting POST returns `500` | Persistence failed; inspect the private state directory/permissions and service journal. The old configuration remains active. |
 | Process fails after a manually edited idle file | Invalid stored JSON/settings intentionally fail startup; restore a valid saved configuration rather than suppressing the error. |
 
@@ -476,6 +496,8 @@ The display/USB overlays were validated with Raspberry Pi firmware-aware `dtmerg
 For application release `148fd10`, 61 behavior/rendering tests passed, the actual browser mirror showed large text and right-to-left scrolling, and the real Pi test process restored an idle playlist after a cold process restart. Production API checks exercised 80/96 px text, atomic rejection of invalid size 97, caption expiry and a 5-second pool-to-reading rotation; the default 30-second playlist was restored and saved afterward. The systemd service was active/enabled with no automatic restarts. These are historical verification results, not a substitute for checking a device after future OS, display or application changes.
 
 For source release `92ff0d3`, **93 tests passed**. The running desktop UI showed both supplied retro backgrounds, delayed peek/blink/look and complete hiding. A separate, cleanly terminated application process on the actual Pi (Python 3.13.5, pygame 2.6.1, SDL 2.32.4; dummy display plus the real HTTP/JPEG path) exercised both scenes over 10-second durations: the sampled bottom-center color changed from blue/black to terracotta and back before returning to idle. It also rendered an 80 px API caption and verified its timed expiry. The real LGPIO driver claimed GPIO19/GPIO26 without root; injected GPIO edges exercised next/previous, wrapping, caption interruption, preserved messages and 10:1 idle counts. These are software-mirror and driver checks, **not a new native scanout, physical-switch press or reboot proof**. At publication, the native service cutover was awaiting fresh private sudo authentication; the previous native service remained active with zero automatic restarts.
+
+The subsequent native runtime-directory repair passed the existing **93 behavior/rendering/GPIO tests** and a real KMSDRM/GBM scanout check. Readback used the active **480 × 640**, AR24, VC4 T-tiled framebuffer and inverted the application's 90-degree rotation for inspection: the normal clock/Clawd frame was present, both Windows scenes had no head before 3 seconds, a 70-pixel-high head around 5 seconds, and no head around 10 seconds. Both 20-second events expired back into idle. Authenticated API requests succeeded while requests without the token were rejected. Both retro IDs were appended to the existing nine-entry group without changing its order or 30-second interval. This verifies actual display scanout, not merely the software mirror; physical switch presses and a new full-system reboot were not performed.
 
 
 ## Release landmarks
