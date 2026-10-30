@@ -74,6 +74,31 @@ curl -q --silent --show-error --fail-with-body --get "$PIPCLOCK_URL/api/react" \
 
 Use `--data-urlencode` for each query value; manual concatenation breaks spaces, `+`, `&`, `#` and UTF-8 text. This request changes the animation and caption atomically.
 
+### Retro Windows scenes
+
+Both scenes use user-provided fullscreen backgrounds. They are **visual only**: no crash, restart or OS shutdown occurs.
+
+```sh
+curl -q --silent --show-error --fail-with-body "$PIPCLOCK_URL/api/event" \
+  -H "Authorization: Bearer $PIPCLOCK_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data '{"event":"windows_bsod","duration":20}'
+
+curl -q --silent --show-error --fail-with-body "$PIPCLOCK_URL/api/event" \
+  -H "Authorization: Bearer $PIPCLOCK_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data '{"event":"windows_shutdown","duration":20}'
+
+# The existing GET route also supports either scene, text and duration.
+curl -q --silent --show-error --fail-with-body --get "$PIPCLOCK_URL/api/react" \
+  -H "Authorization: Bearer $PIPCLOCK_TOKEN" \
+  --data-urlencode 'mood=windows_shutdown' \
+  --data-urlencode 'text=Just pretending!' \
+  --data-urlencode 'duration=20'
+```
+
+Each selection has **one delayed peek**: hidden for 0–3 seconds, rising at 3–4, blinking/looking around at 4–7, sinking at 7–8, then hidden for the remainder. A duration shorter than 3 seconds expires before the peek; replaying an explicit event resets it. Both event defaults are 20 seconds, while the browser tour/gallery sample each for 10 seconds. Retro scenes suppress the normal clock/body/footer but retain the Wi-Fi indicator and readable top-lane API captions/messages with the same precedence, size and scrolling behavior. Direct API selection is immediate and bypasses automatic rarity.
+
 ## Endpoint reference
 
 | Endpoint | Behavior |
@@ -106,21 +131,21 @@ Missing, blank, duplicate, unknown, malformed or invalid query values return HTT
 
 ## Idle playlist
 
-Idle is a logical mode, not necessarily the standard standing pose. Every 30 seconds by default it advances through:
+Idle is a logical mode, not necessarily the standard standing pose. The default group has **11 entries**, with 30 seconds per selection:
 
-`idle` → `pool` → `skate` → `headphones` → `sleeping` → `reading` → `coffee` → `kite` → `swaying`.
+`idle`, `pool`, `skate`, `headphones`, `sleeping`, `reading`, `coffee`, `kite`, `swaying`, `windows_bsod`, `windows_shutdown`.
 
-Configure any nonempty list of distinct names from the reaction table; the order is preserved and repeated round-robin:
+Configure any nonempty list of distinct names from the reaction table. Membership controls eligibility: an omitted retro action never appears automatically. Automatic rotation uses a fixed **10:1 per-entry weight**: each selected normal entry appears ten times per cycle and each selected retro entry once, interleaved over ten normal passes. The first configured entry stays first. All-normal groups retain ordered round-robin rotation; retro-only groups alternate equally; one-entry groups play continuously. These weights are built in, not API configuration fields.
 
 ```sh
 curl -q --silent --show-error --fail-with-body "$PIPCLOCK_URL/api/idle" \
   -H "Authorization: Bearer $PIPCLOCK_TOKEN"
 
-# Replace the entire playlist: all six core moods, plus coffee, kite and swaying.
+# Replace the entire playlist with the default 11-entry group.
 curl -q --silent --show-error --fail-with-body "$PIPCLOCK_URL/api/idle" \
   -H "Authorization: Bearer $PIPCLOCK_TOKEN" \
   -H 'Content-Type: application/json' \
-  --data '{"actions":["idle","pool","skate","headphones","sleeping","reading","coffee","kite","swaying"],"interval":30}'
+  --data '{"actions":["idle","pool","skate","headphones","sleeping","reading","coffee","kite","swaying","windows_bsod","windows_shutdown"],"interval":30}'
 
 # Disable rotation, not the display: keep the standing pose continuously.
 curl -q --silent --show-error --fail-with-body "$PIPCLOCK_URL/api/idle" \
@@ -139,16 +164,22 @@ curl -q --silent --show-error --fail-with-body "$PIPCLOCK_URL/api/event" \
 
 Explicit events/reactions/hooks interrupt the playlist. Their expiry restarts idle at the first entry; an explicit `idle` event starts it immediately. Messages do not interrupt the playlist. Changing the playlist while idle restarts it immediately; changing it during an explicit action leaves that action and its caption running.
 
+The optional [physical previous/next buttons](raspberry-pi.md#optional-physical-previousnext-buttons) step through this same configured order and wrap without changing or saving it. Each press interrupts the current event/reaction, clears its caption, enters logical idle and restarts pose time and the automatic-rotation interval. While idle it steps from the currently visible entry; an explicit action in the list is also used as the starting entry. For an action outside the list (including the startup wave), next selects the first entry and previous selects the last. A one-entry list remains valid. Timed messages retain their independent lifetime, text size and scrolling clock. Explicit events/reactions, expiry back into idle and playlist updates reset manual selection. This is local GPIO behavior, not an additional HTTP endpoint; configure membership/order and interval with the existing API above.
+
+Manual previous/next walks each configured entry exactly once in order, **ignoring automatic rarity**. Explicit API events/reactions also bypass weights and play immediately. The idle API schema remains only `actions` and `interval`; no weight field or new endpoint is needed.
+
 `GET /api/state` keeps `state: "idle"` throughout rotation. Read `animation` for the visible Clawd and `animation_elapsed` for its current pose time. `elapsed` remains logical event time; `message_elapsed` and `caption_elapsed` track their respective text independently.
 
 On the native Pi service, configuration is saved atomically in `/var/lib/pipclock/idle.json`, under the private systemd state directory, and loaded after restarts. Desktop previews are in-memory unless `PIPCLOCK_IDLE_CONFIG` names a settings file. Invalid persisted configuration fails startup explicitly. Invalid requests return HTTP 400 without mutation; a persistence failure returns HTTP 500 and keeps the previous configuration.
+
+Existing saved groups are not silently expanded at startup. To enable the new scenes for an existing installation, append their names through `POST /api/idle`, preserving the other entries and interval.
 
 The preview also exposes text-size controls and an idle-group picker. Only the playlist configuration persists: events, messages, captions, elapsed times and the current playlist position do not survive a process restart. Playlist entries use the configured interval, **not** their event-default durations.
 
 
 ## Reaction summary
 
-All **62 mood/event names** work with both `POST /api/event` and `GET /api/react`. The duration below applies only to `/api/event` when omitted; `/api/react` defaults to 8 seconds for both reaction and caption. The browser tour uses shorter samples for long-lived statuses.
+All **64 mood/event names** work with both `POST /api/event` and `GET /api/react`. The duration below applies only to `/api/event` when omitted; `/api/react` defaults to 8 seconds for both reaction and caption. The browser tour uses shorter samples for long-lived statuses.
 
 | Mood / event | Event default | What Clawd does | Artwork |
 | --- | --- | --- | --- |
@@ -214,6 +245,8 @@ All **62 mood/event names** work with both `POST /api/event` and `GET /api/react
 | `bike` | 12 s | Ride a bike. | claude.dev pixel sprites |
 | `astronaut` | 12 s | Float in space. | claude.dev pixel sprites |
 | `pool` | 12 s | Float in the pool. | claude.dev pixel sprites |
+| `windows_bsod` | 20 s | User-provided blue-screen background with one delayed Clawd peek; visual only. | User-provided Windows-reference PNG |
+| `windows_shutdown` | 20 s | User-provided shutdown background with one delayed Clawd peek; no OS shutdown. | User-provided Windows-reference PNG |
 
 The lens is theatrical animation only: **no camera, microphone or room sensing**. Explicit actions replay when sent again; repeated `thinking` events instead extend the watchdog without resetting its motion. The scared sequence repeats within its active duration; its default duration includes a complete exit and return. `deal_with_it` drops its glasses once per event and holds the result rather than repeatedly dropping them. Unknown event names receive HTTP 400; there are no compatibility aliases for removed actions.
 

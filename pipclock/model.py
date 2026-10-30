@@ -7,14 +7,14 @@ import tempfile
 import threading
 import time
 
-from .catalog import WEBSITE_ACTIONS
+from .catalog import RETRO_ACTIONS, WEBSITE_ACTIONS
 
 DEFAULT_TEXT_SIZE = 64
 MIN_TEXT_SIZE = 32
 MAX_TEXT_SIZE = 96
 DEFAULT_IDLE_ACTIONS = (
     "idle", "pool", "skate", "headphones", "sleeping", "reading",
-    "coffee", "kite", "swaying",
+    "coffee", "kite", "swaying", "windows_bsod", "windows_shutdown",
 )
 DEFAULT_IDLE_INTERVAL = 30
 
@@ -29,6 +29,9 @@ EVENT_DURATIONS = {
 }
 EVENT_DURATIONS.update(
     (event, action["duration"]) for event, action in WEBSITE_ACTIONS.items()
+)
+EVENT_DURATIONS.update(
+    (event, action["duration"]) for event, action in RETRO_ACTIONS.items()
 )
 CLAUDE_EVENTS = {
     "SessionStart": "wave",
@@ -83,6 +86,20 @@ def idle_config_value(actions, interval):
     return {"actions": actions, "interval": float(interval)}
 
 
+def _idle_cycle_for(actions):
+    """Interleave ten normal passes with one appearance of each retro scene."""
+    rare = [action for action in actions if action in RETRO_ACTIONS]
+    if not rare or len(rare) == len(actions):
+        return tuple(actions)
+    phases = {action: ((2 * index + 1) * 10) // (2 * len(rare))
+              for index, action in enumerate(rare)}
+    cycle = tuple(action for phase in range(10) for action in actions
+                  if action not in phases or phases[action] == phase)
+    # Preserve the configured first entry, including a deliberately first retro.
+    start = cycle.index(actions[0])
+    return cycle[start:] + cycle[:start] if start else cycle
+
+
 class Companion:
     def __init__(self, clock=time.monotonic, idle_config_path=None):
         self._clock = clock
@@ -99,9 +116,11 @@ class Companion:
                 pass
             except (ValueError, RecursionError) as error:
                 raise ValueError(f"invalid idle configuration in {self._idle_config_path}: {error}") from error
+        self._idle_cycle = _idle_cycle_for(self._idle_config["actions"])
         self._state = "wave"
         self._started = clock()
         self._until = self._started + 8
+        self._idle_index = 0
         self._message = None
         self._message_until = 0
         self._message_started = 0
@@ -137,12 +156,15 @@ class Companion:
 
     def configure_idle(self, actions, interval):
         config = idle_config_value(actions, interval)
+        cycle = _idle_cycle_for(config["actions"])
         with self._lock:
             if self._idle_config_path is not None:
                 self._save_idle_config(config)
             now = self._clock()
             self._expire_event(now)
             self._idle_config = config
+            self._idle_cycle = cycle
+            self._idle_index = 0
             if self._state == "idle":
                 self._started = now
             return {"actions": list(config["actions"]), "interval": config["interval"]}
@@ -152,6 +174,7 @@ class Companion:
             self._state = "idle"
             self._started = self._until
             self._until = 0
+            self._idle_index = 0
 
     def event(self, event, duration=None):
         event = event_value(event)
@@ -163,7 +186,33 @@ class Companion:
             if self._state != event or event != "thinking":
                 self._started = now
             self._state = event
+            self._idle_index = 0
             self._until = 0 if event == "idle" else now + seconds
+            self._caption = None
+            self._caption_until = 0
+
+    def step_idle(self, direction):
+        """Select the adjacent idle pose without changing the saved playlist."""
+        if isinstance(direction, bool) or not isinstance(direction, int) or direction not in (-1, 1):
+            raise ValueError("direction must be -1 or 1")
+        with self._lock:
+            now = self._clock()
+            self._expire_event(now)
+            actions = self._idle_config["actions"]
+            if self._state == "idle":
+                elapsed = max(0, now - self._started)
+                position = (self._idle_index + int(elapsed // self._idle_config["interval"])) % len(self._idle_cycle)
+                index = actions.index(self._idle_cycle[position])
+            elif self._state in actions:
+                index = actions.index(self._state)
+            else:
+                # An off-playlist action has no neighbor: enter at either end.
+                index = -1 if direction == 1 else 0
+            selected = actions[(index + direction) % len(actions)]
+            self._idle_index = self._idle_cycle.index(selected)
+            self._state = "idle"
+            self._started = now
+            self._until = 0
             self._caption = None
             self._caption_until = 0
 
@@ -177,6 +226,7 @@ class Companion:
             self._state = mood
             self._started = now
             self._until = 0 if mood == "idle" else now + seconds
+            self._idle_index = 0
             self._caption = text
             self._caption_until = now + seconds
             self._caption_started = now
@@ -216,7 +266,7 @@ class Companion:
                     animation = actions[0]
                 else:
                     turn, animation_elapsed = divmod(elapsed, self._idle_config["interval"])
-                    animation = actions[int(turn) % len(actions)]
+                    animation = self._idle_cycle[(self._idle_index + int(turn)) % len(self._idle_cycle)]
             return {
                 "state": self._state,
                 "elapsed": elapsed,

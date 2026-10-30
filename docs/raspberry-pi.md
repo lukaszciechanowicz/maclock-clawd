@@ -29,6 +29,8 @@ Package versions were read from the installed device; they are an inventory, not
 | --- | --- |
 | `python3` | `3.13.5-1` |
 | `python3-pygame` | `2.6.1-1+b2` |
+| `python3-gpiozero` | `2.0.1` |
+| `python3-lgpio` | `0.2.2` |
 | `libgbm1`, `libgl1-mesa-dri` | `26.2.2-1~bpo13+0~rpt1` |
 | `libegl1`, `libgles2` | `1.7.0-1` |
 | `libdrm2` | `2.4.134-3~bpo13+1+rpt1` |
@@ -48,6 +50,8 @@ sudo apt-get install --no-install-recommends python3-pygame libgbm1 libegl1 libg
 ```
 
 The actual native-install transaction explicitly requested `python3-pygame libgbm1 libegl1 libgles2 libgl1-mesa-dri libdrm-tests fonts-dejavu-core`: **66 packages were newly installed**, without upgrades/removals. `fontconfig` was installed afterward with two dependencies, bringing these transactions to **69 additions**. The [complete package/version ledger](raspberry-pi-packages.txt) records every addition, including transitive dependencies. `libdrm-tests` was a diagnostic tool, not a Python application dependency; add it separately when reproducing that diagnostic environment.
+
+`python3-gpiozero` and `python3-lgpio` were already installed on this Pi before the button work. They are not new additions to the historical 69-package transaction or its ledger. Fresh systems need these distro GPIO packages for buttons (see below); no pip compiler build is needed.
 
 Unreliable initial mirror downloads were worked around using per-command `Acquire::ForceIPv4=true`, verified HTTPS package downloads from `archive.raspbian.org` into `/var/cache/apt/archives`, and `apt-get --no-download`. Checksums came from APT metadata. **Package repository configuration was not changed**, and the temporary IPv4 flags were not installed as permanent APT settings.
 
@@ -160,7 +164,7 @@ The touch rule was added through `user-data`'s `write_files` with owner `root:ro
 
 ## Optional physical previous/next buttons
 
-**Wiring proposal, not an implemented GPIO feature.** The current application does not yet read physical buttons or expose a next/previous endpoint. No GPIO configuration, package or service change was applied for this proposal.
+The existing application handles previous/next switches directly through `gpiozero.Button` and the LGPIO backend. There is no separate daemon, new HTTP endpoint, network round trip or SSH requirement for a press.
 
 The [Waveshare pinout](https://www.waveshare.com/wiki/2.8inch_DPI_LCD#Pinout_Definition) marks physical header pins **35 and 37 as NC**, available to the user. They map to [BCM GPIO19](https://pinout.xyz/pinout/pin35_gpio19/) and [BCM GPIO26](https://pinout.xyz/pinout/pin37_gpio26/), respectively. The verified vendor overlays use GPIO10/11 for touch I²C, GPIO27 for its interrupt and GPIO18 for backlight; GPIO19/26 need not be reclaimed from touch.
 
@@ -170,15 +174,49 @@ The [Waveshare pinout](https://www.waveshare.com/wiki/2.8inch_DPI_LCD#Pinout_Def
 | Next Clawd | GPIO26 | 37 |
 | Shared ground | GND | 39 |
 
-Use two **normally-open, voltage-free momentary contacts**, each connecting its GPIO to ground when pressed. Software must configure internal 3.3 V pull-ups, so released is high and pressed is low. Do not connect GPIO to 5 V or to powered outputs from the clock's old circuit board. Disconnect power while wiring. If the case only supplies plastic button caps, fit microswitches underneath; if a switch has four legs, identify the actual switching pair with a meter rather than assuming every pair is independent.
+Use two **normally-open, voltage-free momentary contacts**, each connecting its GPIO to ground when pressed. The application enables internal 3.3 V pull-ups (`pull_up=True`), so released is high and pressed is low, with **50 ms debounce** (`bounce_time=0.05`). A held switch does not repeat. Do not connect GPIO to 5 V or to powered outputs from the clock's old circuit board. Disconnect power while wiring. If the case only supplies plastic button caps, fit microswitches underneath; if a switch has four legs, identify the actual switching pair with a meter rather than assuming every pair is independent.
 
 The screen occupies the header mechanically even though those two signals are unused: use an appropriate breakout/stacking connector or carefully solder to the corresponding Pi-side pads. Do not confuse **BCM GPIO19** with **physical pin19**, which the display uses for touch SDA.
 
 There is no need to disable touch for these pins. In particular, the installed `waveshare-touch-28dpi` overlay also creates the default-on GPIO18 backlight node; removing the whole overlay discards that backlight setup as well. If touch is ever disabled, preserve backlight configuration explicitly.
 
-A suitable software extension is optional GPIO input handling in the existing service, for example with distro `python3-gpiozero`, service access to the `gpio` group, and approximately 100–200 ms switch debounce. A press would move backward/forward through the configured idle list, wrap at the ends and reset its automatic-rotation timer. This is a proposed behavior, not an available API contract; implement it through the thread-safe model rather than a helper that overwrites the saved playlist.
+### Configuration and service access
 
-The Pi could not be reached for a live GPIO inspection during the button discussion. Pin selection is based on the vendor pinout and offline inspection of the exact overlay blobs previously verified against the installed files. Recheck pin ownership before enabling inputs if other hardware/overlays have since been added.
+The repository native unit sets these defaults before loading `/etc/pipclock.env`:
+
+```ini
+PIPCLOCK_BUTTON_PREV=19
+PIPCLOCK_BUTTON_NEXT=26
+```
+
+These are **BCM numbers**, not header positions. Both variables must be set to distinct integer BCM pins in the range 0–27, or both must be unset/empty. An incomplete pair, invalid value, unavailable dependency, permission failure or busy GPIO is a clear startup error, not a silent fallback. A startup log identifies the configured pins; normal presses are not logged individually. GPIO resources are released at shutdown and on partial startup failure.
+
+Ordinary desktop runs have neither variable set and do not import or require GPIO libraries. For a compatible Pi installation, provide the distro dependencies and service-account access:
+
+```sh
+sudo apt-get install --no-install-recommends python3-gpiozero python3-lgpio
+```
+
+The packages above **already existed on this Pi**; the command is for provisioning systems that lack them, not a record of a new installation here. The native unit supplies `SupplementaryGroups=video render input gpio` at service start, so a separate persistent `usermod` change is not needed for the systemd process. Install the updated unit, run `sudo systemctl daemon-reload`, then restart `pipclock.service` to apply service changes. No passwordless-sudo policy or touch/backlight overlay change is required.
+
+To disable buttons while retaining the native display, use `sudoedit /etc/pipclock.env`, preserving the existing host/token settings and root-owned `0600` permissions, and add **both** empty overrides:
+
+```ini
+PIPCLOCK_BUTTON_PREV=
+PIPCLOCK_BUTTON_NEXT=
+```
+
+Then run `sudo systemctl restart pipclock.service`. To re-enable the default wiring, remove both overrides or set them to `19` and `26`, respectively. Do not publish the rest of this secret environment file.
+
+### Press behavior and verification boundaries
+
+Each press enters logical idle immediately and moves one place backward/forward through the ordered [idle playlist](api.md#idle-playlist), wrapping at either end. While already idle, stepping uses the currently visible entry, including automatic rotations since the last rendered frame. If an explicit action is itself in the playlist, stepping uses that entry; otherwise (including the startup wave), next chooses the first entry and previous chooses the last. A one-entry playlist is valid.
+
+Automatic rotation uses fixed 10:1 per-entry rarity: each selected normal action occurs ten times per cycle for each selected retro action's once. Buttons ignore those weights and walk the configured list once per entry; direct API actions are immediate too. Membership determines eligibility. The default group now has 11 entries (the previous nine plus `windows_bsod` and `windows_shutdown`); retro-only groups alternate equally and one-entry groups run continuously. Existing saved groups are not silently migrated: extend them through the [idle API](api.md#idle-playlist), preserving their other entries and interval. Configuration remains `actions` and `interval` only.
+
+A press interrupts an explicit event/reaction, clears its reaction caption, and resets logical/pose time and the automatic-rotation timer. The selected pose then gets a full configured interval before automatic rotation. Independent timed messages keep their content, remaining lifetime, text size and scrolling clock; a still-active message hidden by a caption can become visible when the press clears that caption. A press never changes or saves playlist membership/order or interval. Explicit events/reactions, expiry back into idle and playlist updates reset the manual selection offset.
+
+Live inspection before enabling the controller found GPIO19 and GPIO26 as inputs reading low; `/dev/gpiochip0` and `/dev/gpiomem` were `root:gpio`, mode `0660`. A staged real-LGPIO initialization subsequently claimed both inputs without root and observed both reading high. The controller requests internal pull-ups; the `--` field printed by `pinctrl` is not treated as an independent bias measurement. Neither probe establishes physical switch wiring or electrical debounce. Hardware-independent edge tests use gpiozero's injected `MockFactory`. Recheck ownership if other hardware/overlays are added.
 
 ## USB debugging and SSH access
 
@@ -275,7 +313,7 @@ Do not paper over an unavailable locale by exporting a permanent `LC_ALL`; gener
 Important integration settings:
 
 - `PAMName=login`, `/dev/tty1`, `StandardInput=tty` and `Conflicts=getty@tty1.service` provide the console/session context and avoid a competing tty1 login console. There was no separate permanent getty mask.
-- `SupplementaryGroups=video render input` grants the necessary graphics/input access.
+- `SupplementaryGroups=video render input gpio` grants graphics/input and button GPIO access.
 - `SDL_VIDEODRIVER=kmsdrm` selects native display output.
 - **`SDL_FRAMEBUFFER_ACCELERATION=opengles2`** selects VC4's supported GLES2 framebuffer path.
 - `StateDirectory=pipclock`, mode `0700`, provides persistent writable storage without making application source writable.
@@ -288,7 +326,7 @@ Do not reintroduce the rejected workarounds: `pygame.SCALED`, `LIBGL_ALWAYS_SOFT
 
 ### Application and artwork installed on the Pi
 
-The deployed source includes the uniform terracotta Clawd/sand background, enlarged lower-positioned artwork, hours/minutes-only clock, removal of the old footer/date/slogans, Wi-Fi badge, 62 actions and the large-text/idle features described in the [API guide](api.md).
+The current application catalog has **64 actions**. Normal scenes use terracotta Clawd on sand with enlarged lower-positioned artwork and an hours/minutes-only clock, without the old footer/date/slogans. The two user-provided retro Windows backgrounds instead fill the screen and omit the clock and normal body/footer; the Wi-Fi badge and API text remain available. `windows_bsod` and `windows_shutdown` are visual-only effects, never a real crash, restart or shutdown. Each defaults to 20 seconds and has one peek starting at 3 seconds and ending at 8 seconds; shorter-than-3-second triggers expire before the peek. See the [duration-20 API examples](api.md#retro-windows-scenes) and the [artwork credits](artwork.md).
 
 `pipclock/assets/fonts/DSEG7Classic-Regular.ttf` and its OFL license are bundled application assets. DSEG was **not** installed as a global system font. Artwork sources and font licensing are documented in [artwork and attribution](artwork.md).
 
@@ -315,29 +353,31 @@ It is mode `0600`. API callers source/export its variable as shown in the [cookb
 
 ## Deploying and updating
 
-### Existing device-specific installer
+### Existing device-specific updater
 
-The retained stage contains `release.tar.gz`, `release.sha256`, `install.sh` and private `lan.env`. The installer:
+The current GPIO/retro stage at `/home/lukasz/maclock-buttons.JqhvOL` contains credential-free `release.tar.gz`, `release.sha256` and `install.sh`. This updater:
 
 1. Requires root and verifies the archive checksum.
-2. Verifies the service account and refuses to overwrite a differing `/etc/pipclock.env`.
-3. Copies the existing source into `/opt/maclock-clawd.before-redesign.XXXXXX`.
-4. Installs the private environment file, stops the service and extracts the release under `/opt/maclock-clawd`.
-5. Installs the repository unit, reloads systemd and enables/starts the service.
-6. Waits for native health, verifies rejection without a token and success with the token, then prints service state and the backup path.
+2. Checks the existing `pipclock` account, private `/etc/pipclock.env` and installed GPIO imports before stopping anything.
+3. Copies the existing source and installed service unit into `/opt/maclock-clawd.before-redesign.XXXXXX`.
+4. Stops the service and extracts the release under `/opt/maclock-clawd`, without modifying the token file or persistent state directory.
+5. Installs the repository unit, reloads systemd and enables/starts the service with its runtime `gpio` group and GPIO19/GPIO26 defaults.
+6. Waits for native health and prints service state, pin configuration and the backup path. LAN authorization and rendered pixels are checked separately; health is not display proof.
+
+The older `/home/lukasz/maclock-redesign.RFLoD6` stage belongs to the earlier LAN/text deployment and includes private `lan.env`; it is not the current release.
 
 From the Mac, this one-time administration command is:
 
 ```sh
 ssh -t -i "$HOME/.ssh/omp_tmp_raspbery" lukasz@192.168.1.57 \
-  'sudo sh /home/lukasz/maclock-redesign.RFLoD6/install.sh'
+  'sudo sh /home/lukasz/maclock-buttons.JqhvOL/install.sh'
 ```
 
 Enter the **Pi account password** if sudo asks, directly in that terminal. Do not paste it into chat. A passwordless SSH key does not grant passwordless sudo. This staging directory is a retained device-specific artifact, not a universally installed command; do not assume it exists on another Pi or contains a later Git checkout.
 
 ### Reproducible source update from the repository
 
-On the Mac, from the repository root, prepare a credential-free archive and a fresh remote stage:
+On the Mac, commit the intended release first. From the repository root, prepare a credential-free archive of **committed HEAD only** and a fresh remote stage. `git archive` omits working-tree secrets, caches and macOS extended attributes; uncommitted changes are deliberately not deployed:
 
 ```sh
 (
@@ -346,8 +386,7 @@ PI=lukasz@192.168.1.57
 KEY="$HOME/.ssh/omp_tmp_raspbery"
 LOCAL_RELEASE=$(mktemp -d)
 trap 'rm -rf "$LOCAL_RELEASE"' EXIT
-tar --exclude='__pycache__' --exclude='*.pyc' --exclude='.DS_Store' \
-  -czf "$LOCAL_RELEASE/release.tar.gz" pipclock deploy pyproject.toml README.md docs
+git archive --format=tar.gz --output="$LOCAL_RELEASE/release.tar.gz" HEAD
 (
   cd "$LOCAL_RELEASE"
   shasum -a 256 release.tar.gz > release.sha256
@@ -373,6 +412,8 @@ printf 'Previous source: %s\n' "$BACKUP"
 ```
 
 This preserves the existing token and idle settings outside the application tree. It assumes the already-provisioned service account, dependencies and environment. On a new image, provision those and the hardware first. Do not archive `.ssh`, private environment files, SD backups or cloud-init user-data.
+
+This GPIO update uses the already-installed `python3-gpiozero` and `python3-lgpio` packages. It adds `gpio` only to the service's `SupplementaryGroups`, not to the account's permanent group membership. No display/touch overlay, backlight setting, network profile, locale, sudo policy or token rotation is required. After updating an existing installation, append missing `windows_bsod` and `windows_shutdown` entries through the idle API, preserving the existing entries/order and interval; the updater itself never rewrites the saved group.
 
 ## Health checks and troubleshooting
 

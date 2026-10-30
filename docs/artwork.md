@@ -14,6 +14,8 @@ Flag artwork uses official marks from [AWS](https://aws.amazon.com/), [ShipStati
 
 The clock uses **DSEG7 Classic Regular** by keshikan, bundled unmodified from the [official DSEG v0.46 release](https://github.com/keshikan/DSEG/releases/tag/v0.46). The font is licensed under the **SIL Open Font License 1.1**, with its original copyright and Reserved Font Name notice included in [`DSEG-LICENSE.txt`](../pipclock/assets/fonts/DSEG-LICENSE.txt). This font license is separate from the character artwork rights above.
 
+The retro scenes use **user-provided Windows-reference backgrounds**, bundled unchanged as [`windows_bsod.png`](../pipclock/assets/windows_bsod.png) and [`windows_shutdown.png`](../pipclock/assets/windows_shutdown.png). These are separate from the claude.dev character artwork and DSEG font license; supplying them does not establish redistribution rights or Microsoft endorsement. Their original screenshot/reference text is retained. They are decorative fullscreen images, not evidence of Windows or Windows fonts installed on the device, and never perform a real crash, restart or shutdown. Unlike normal sand-background scenes, they omit the clock and normal body/footer and show one small delayed Clawd peek while retaining the Wi-Fi indicator and API text.
+
 The existing package, CLI and environment-variable names remain `pipclock` and `PIPCLOCK_TOKEN`; the on-screen character is Clawd.
 
 ## Rebuilding the bundled artwork
@@ -47,4 +49,4 @@ Run from the repository root:
 .venv/bin/python tools/render_gallery.py --print-markdown
 ```
 
-The exporter regenerates the GIFs and prints categorized, three-column tables for [the gallery document](gallery.md). Replace the content between its `BEGIN ANIMATION GALLERY` and `END ANIMATION GALLERY` markers with that output. Categories, order and labels come directly from the local preview controls in `pipclock/preview.html`. The example clock and connected Wi-Fi icon are fixed for reproducible exports; GIFs are documentation assets and are not loaded by the Pi.
+The exporter regenerates the GIFs and prints categorized, three-column tables for [the gallery document](gallery.md). Replace the content between its `BEGIN ANIMATION GALLERY` and `END ANIMATION GALLERY` markers with that output. Categories, order and labels come directly from the local preview controls in `pipclock/preview.html`. The example clock and connected Wi-Fi icon are fixed for reproducible exports; retro Windows scenes omit the clock and use 10-second samples covering their single 3–8-second peek. GIFs are documentation assets and are not loaded by the Pi.

@@ -9,6 +9,7 @@ import signal
 import threading
 import time
 
+from .buttons import IdleButtons
 from .model import Companion
 from .network import WifiMonitor
 from .server import Frames, create_server
@@ -54,6 +55,7 @@ def main():
     pygame.display.init()
     pygame.font.init()
     server = None
+    buttons = None
     try:
         flags = pygame.FULLSCREEN if args.fullscreen else 0
         display_size = (HEIGHT, WIDTH) if args.rotation in (90, 270) else (WIDTH, HEIGHT)
@@ -69,6 +71,15 @@ def main():
         pygame.display.set_caption("Clawd — a little desktop company")
         pygame.mouse.set_visible(not args.fullscreen)
         companion = Companion(idle_config_path=os.environ.get("PIPCLOCK_IDLE_CONFIG"))
+        try:
+            buttons = IdleButtons.from_environment(companion)
+        except (ValueError, RuntimeError) as error:
+            parser.error(str(error))
+        if buttons is not None:
+            print(
+                f"Clawd GPIO buttons: previous BCM {buttons.previous_pin}, next BCM {buttons.next_pin}",
+                flush=True,
+            )
         renderer = Renderer()
         wifi = WifiMonitor()
         frames = Frames() if args.preview else None
@@ -107,10 +118,16 @@ def main():
                 next_mirror = now + 1 / 12
             ticker.tick(args.fps)
     finally:
-        if server is not None:
-            server.shutdown()
-            server.server_close()
-        pygame.quit()
+        try:
+            if buttons is not None:
+                buttons.close()
+        finally:
+            try:
+                if server is not None:
+                    server.shutdown()
+                    server.server_close()
+            finally:
+                pygame.quit()
 
 
 if __name__ == "__main__":

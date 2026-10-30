@@ -10,6 +10,7 @@ from pathlib import Path
 import pygame
 
 from .animations import WebsiteAnimations
+from .catalog import RETRO_ACTIONS
 from .model import DEFAULT_TEXT_SIZE, EVENT_DURATIONS
 
 
@@ -57,6 +58,8 @@ class Renderer:
         self._header_key = None
         self._header_surface = None
         self._wifi = self._wifi_graphics()
+        self._retro = self._retro_graphics()
+        self._peek_heads = self._peek_graphics()
         self._mug = self._enlarge(self._mug_graphic(), 2)
         self._book = self._enlarge(self._book_graphic(), 2)
         self._lens = self._enlarge(self._lens_graphic(), 2)
@@ -101,9 +104,9 @@ class Renderer:
         surface.blit(image, (round(x - image.get_width() / 2), round(y)))
 
 
-    def _header(self, text, text_size):
+    def _header(self, text, text_size, color=INK):
         """Cache the full-size Unicode line, leaving movement to clipped blits."""
-        key = (text, text_size)
+        key = (text, text_size, color)
         if key != self._header_key:
             clean = "".join(
                 "\ufffd" if 0xD800 <= ord(c) <= 0xDFFF else
@@ -114,12 +117,12 @@ class Renderer:
             if font is None:
                 font = pygame.font.Font(self._unicode_path, text_size)
                 self.message_fonts[text_size] = font
-            self._header_surface = font.render(clean, True, INK)
+            self._header_surface = font.render(clean, True, color)
             self._header_key = key
         return self._header_surface
 
-    def _draw_header(self, surface, text, text_size, elapsed):
-        image = self._header(text, text_size)
+    def _draw_header(self, surface, text, text_size, elapsed, color=INK):
+        image = self._header(text, text_size, color)
         lane = self._header_rect
         y = lane.centery - image.get_height() // 2
         previous_clip = surface.get_clip()
@@ -258,6 +261,58 @@ class Renderer:
                 frames.append(image)
             flags["flag_" + name] = tuple(frames)
         return flags
+
+    @staticmethod
+    def _retro_graphics():
+        """Fit the supplied screenshots once, using their own border as matte."""
+        backgrounds = {}
+        assets = Path(__file__).with_name("assets")
+        for state, action in RETRO_ACTIONS.items():
+            source = pygame.image.load(str(assets / action["file"]))
+            ratio = min(WIDTH / source.get_width(), HEIGHT / source.get_height())
+            size = (round(source.get_width() * ratio), round(source.get_height() * ratio))
+            image = pygame.Surface((WIDTH, HEIGHT))
+            image.fill(source.get_at((0, 0)))
+            fitted = pygame.transform.smoothscale(source, size)
+            image.blit(fitted, fitted.get_rect(center=(WIDTH // 2, HEIGHT // 2)))
+            backgrounds[state] = image
+        return backgrounds
+
+    @staticmethod
+    def _peek_graphics():
+        """The ordinary rectangular terracotta head and eyes, without limbs."""
+        heads = {}
+        scale = 160 / 144
+        for expression, gaze in (("center", 0), ("left", -5), ("right", 5), ("blink", 0)):
+            image = pygame.Surface((160, 70))
+            image.fill(CORAL)
+            for eye_x in (-48, 48):
+                center = round(80 + eye_x * scale + gaze)
+                if expression == "blink":
+                    eye = (center - 9, 50, 18, 3)
+                else:
+                    eye = (center - 9, 38, 18, 20)
+                pygame.draw.rect(image, BLACK, eye)
+            heads[expression] = image
+        return heads
+
+    def _draw_retro(self, surface, state, elapsed):
+        surface.blit(self._retro[state], (0, 0))
+        # This is selection time, not a repeating phase: only one peek occurs.
+        if not 3 < elapsed < 8:
+            return
+        amount = min(elapsed - 3, 1.0, 8 - elapsed)
+        amount = amount * amount * (3 - 2 * amount)
+        top = HEIGHT - round(70 * amount)
+        if 4.65 <= elapsed < 4.85 or 6.55 <= elapsed < 6.75:
+            expression = "blink"
+        elif 4.1 <= elapsed < 5.1:
+            expression = "left"
+        elif 5.45 <= elapsed < 6.45:
+            expression = "right"
+        else:
+            expression = "center"
+        surface.blit(self._peek_heads[expression], ((WIDTH - 160) // 2, top))
 
     def _character(self, surface, state, t):
         # Website poses are real bundled frames; custom timing is independent.
@@ -498,13 +553,17 @@ class Renderer:
         if state not in EVENT_DURATIONS:
             state = "idle"
         elapsed = max(0.0, float(snapshot.get("animation_elapsed", snapshot.get("elapsed", 0.0))))
-        surface.fill(PAPER)
-        previous_clip = surface.get_clip()
-        # Protect the plain header while preserving deliberate close-up crops
-        # and the scared action's complete offscreen exit/return.
-        surface.set_clip(previous_clip.clip(self._art_rect))
-        self._character(surface, state, elapsed)
-        surface.set_clip(previous_clip)
+        retro = state in self._retro
+        if retro:
+            self._draw_retro(surface, state, elapsed)
+        else:
+            surface.fill(PAPER)
+            previous_clip = surface.get_clip()
+            # Protect the plain header while preserving deliberate close-up crops
+            # and the scared action's complete offscreen exit/return.
+            surface.set_clip(previous_clip.clip(self._art_rect))
+            self._character(surface, state, elapsed)
+            surface.set_clip(previous_clip)
         header = snapshot.get("caption")
         text_size = snapshot.get("caption_text_size", DEFAULT_TEXT_SIZE)
         text_elapsed = snapshot.get("caption_elapsed", 0.0)
@@ -522,7 +581,8 @@ class Renderer:
             elif state == "ok":
                 header = "OK!"
         if header:
-            self._draw_header(surface, str(header), text_size, text_elapsed)
-        else:
+            color = CREAM if state == "windows_bsod" else (255, 164, 64) if retro else INK
+            self._draw_header(surface, str(header), text_size, text_elapsed, color)
+        elif not retro:
             self._clock(surface, wall_time)
         surface.blit(self._wifi.get(wifi_status, self._wifi["unavailable"]), (WIDTH - 40, 14))

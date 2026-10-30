@@ -34,6 +34,7 @@ CUSTOM_SECONDS = {
     "deal_with_it": 4, "closeup": 12, "heart_eyes": 4,
     "flag_pl": 6, "flag_aws": 6, "flag_shipstation": 6,
     "flag_stamps": 6, "cloud_engineering": 6,
+    "windows_bsod": 10, "windows_shutdown": 10,
 }
 
 

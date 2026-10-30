@@ -15,6 +15,7 @@ Repository = "https://github.com/lukaszciechanowicz/maclock-clawd"
 [project.optional-dependencies]
 artwork = ["playwright>=1.64,<2"]
 gallery = ["Pillow>=11,<14"]
+test = ["gpiozero>=2.0,<3"]
 
 [project.scripts]
 pipclock = "pipclock.__main__:main"

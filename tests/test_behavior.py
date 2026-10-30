@@ -1,5 +1,6 @@
 """Consumer-visible timer, hook and HTTP security boundaries."""
 
+from collections import Counter
 import json
 from pathlib import Path
 import stat
@@ -313,6 +314,177 @@ class IdleTests(unittest.TestCase):
                 self.assertEqual(self.pip.snapshot(), before)
 
 
+class WeightedIdleTests(unittest.TestCase):
+    def setUp(self):
+        self.now = 100.0
+        self.pip = Companion(clock=lambda: self.now)
+
+    def test_retro_scenes_appear_once_per_ten_appearances_of_each_normal_pose(self):
+        groups = [
+            (["reading", "windows_bsod", "coffee", "windows_shutdown"],
+             {"reading": 10, "coffee": 10, "windows_bsod": 1, "windows_shutdown": 1}),
+            (["windows_shutdown", "reading", "windows_bsod"],
+             {"reading": 10, "windows_bsod": 1, "windows_shutdown": 1}),
+            (["coffee", "windows_bsod"], {"coffee": 10, "windows_bsod": 1}),
+        ]
+        for actions, expected in groups:
+            with self.subTest(actions=actions):
+                self.pip.configure_idle(actions, 5)
+                self.pip.event("idle")
+                start = self.now
+                sequence = []
+                for turn in range(sum(expected.values())):
+                    self.now = start + turn * 5
+                    state = self.pip.snapshot()
+                    self.assertEqual(state["state"], "idle")
+                    sequence.append(state["animation"])
+                self.assertEqual(sequence[0], actions[0])
+                self.assertEqual(Counter(sequence), expected)
+                self.now = start + sum(expected.values()) * 5 * 1000000
+                self.assertEqual(self.pip.snapshot()["animation"], actions[0])
+                self.assertEqual(self.pip.idle_config()["actions"], actions)
+
+    def test_manual_steps_select_rare_entries_immediately_in_configured_order(self):
+        actions = ["reading", "windows_bsod", "coffee", "windows_shutdown"]
+        self.pip.configure_idle(actions, 5)
+        self.pip.event("idle")
+        for expected in actions[1:] + actions[:1]:
+            self.pip.step_idle(1)
+            state = self.pip.snapshot()
+            self.assertEqual((state["animation"], state["animation_elapsed"]), (expected, 0))
+        self.pip.step_idle(-1)
+        self.assertEqual(self.pip.snapshot()["animation"], "windows_shutdown")
+        self.now += 4.5
+        self.assertEqual(self.pip.snapshot()["animation"], "windows_shutdown")
+        self.now += 0.5
+        self.assertEqual(self.pip.snapshot()["animation"], "reading")
+
+    def test_retro_only_and_single_retro_groups_remain_usable(self):
+        self.pip.configure_idle(["windows_bsod", "windows_shutdown"], 5)
+        self.pip.event("idle")
+        self.now += 5
+        self.assertEqual(self.pip.snapshot()["animation"], "windows_shutdown")
+        self.now += 5
+        self.assertEqual(self.pip.snapshot()["animation"], "windows_bsod")
+        self.pip.configure_idle(["windows_shutdown"], 5)
+        self.now += 27.5
+        state = self.pip.snapshot()
+        self.assertEqual((state["animation"], state["animation_elapsed"]), ("windows_shutdown", 27.5))
+
+    def test_failed_persistence_does_not_replace_the_weighted_cycle(self):
+        with tempfile.TemporaryDirectory() as directory:
+            pip = Companion(clock=lambda: self.now, idle_config_path=Path(directory) / "idle.json")
+            config = {"actions": ["reading", "windows_bsod", "coffee", "windows_shutdown"], "interval": 5}
+            pip.configure_idle(**config)
+            pip.event("idle")
+            pip.step_idle(1)
+            before = pip.snapshot()
+            with patch("pipclock.model.os.replace", side_effect=OSError("disk failure")):
+                with self.assertRaises(OSError):
+                    pip.configure_idle(["coffee"], 5)
+            self.assertEqual(pip.snapshot(), before)
+            self.assertEqual(pip.idle_config(), config)
+            self.now += 5
+            self.assertEqual(pip.snapshot()["animation"], "coffee")
+
+
+class ManualIdleTests(unittest.TestCase):
+    def setUp(self):
+        self.now = 100.0
+        self.pip = Companion(clock=lambda: self.now)
+        self.pip.configure_idle(["pool", "reading", "coffee"], 5)
+        self.pip.event("idle")
+
+    def test_previous_and_next_wrap_the_configured_list(self):
+        for direction, expected in ((-1, "coffee"), (1, "pool"), (1, "reading"),
+                                    (1, "coffee"), (1, "pool"), (-1, "coffee")):
+            with self.subTest(direction=direction, expected=expected):
+                self.pip.step_idle(direction)
+                state = self.pip.snapshot()
+                self.assertEqual((state["state"], state["animation"], state["animation_elapsed"]),
+                                 ("idle", expected, 0))
+
+    def test_step_uses_current_automatic_pose_and_restarts_its_timer(self):
+        self.now += 6.5
+        self.pip.step_idle(1)
+        self.assertEqual(self.pip.snapshot()["animation"], "coffee")
+        self.now += 4.5
+        state = self.pip.snapshot()
+        self.assertEqual((state["animation"], state["animation_elapsed"]), ("coffee", 4.5))
+        self.now += 0.5
+        state = self.pip.snapshot()
+        self.assertEqual((state["animation"], state["animation_elapsed"]), ("pool", 0))
+        self.now += 5 * 3 * 1000000 + 6
+        self.pip.step_idle(-1)
+        self.assertEqual(self.pip.snapshot()["animation"], "pool")
+
+    def test_step_interrupts_caption_but_preserves_independent_message(self):
+        self.pip.message("Keep scrolling", 60, text_size=80)
+        self.now += 2
+        self.pip.react("reading", "Action caption", 20, text_size=96)
+        self.now += 4
+        self.pip.step_idle(1)
+        state = self.pip.snapshot()
+        self.assertEqual((state["state"], state["animation"]), ("idle", "coffee"))
+        self.assertIsNone(state["caption"])
+        self.assertEqual(state["caption_remaining"], 0)
+        self.assertEqual((state["message"], state["message_text_size"], state["message_elapsed"],
+                          state["message_remaining"]), ("Keep scrolling", 80, 6, 54))
+        self.pip.event("wave", 20)
+        self.pip.step_idle(1)
+        self.assertEqual(self.pip.snapshot()["animation"], "pool")
+        self.pip.event("wave", 20)
+        self.pip.step_idle(-1)
+        self.assertEqual(self.pip.snapshot()["animation"], "coffee")
+
+    def test_explicit_events_expiry_and_reconfiguration_reset_manual_selection(self):
+        self.pip.step_idle(-1)
+        self.pip.event("idle")
+        self.assertEqual(self.pip.snapshot()["animation"], "pool")
+        self.pip.step_idle(1)
+        self.pip.react("idle", "Caption", 20)
+        self.assertEqual(self.pip.snapshot()["animation"], "pool")
+        self.pip.step_idle(-1)
+        self.pip.event("wave", 2)
+        self.now += 2
+        self.assertEqual(self.pip.snapshot()["animation"], "pool")
+        self.pip.step_idle(1)
+        self.pip.configure_idle(["sleeping", "headphones"], 10)
+        self.assertEqual(self.pip.snapshot()["animation"], "sleeping")
+        self.now += 10
+        self.assertEqual(self.pip.snapshot()["animation"], "headphones")
+
+    def test_single_entry_remains_continuous_and_invalid_steps_do_not_mutate(self):
+        self.pip.configure_idle(["pool"], 5)
+        self.now += 27
+        self.pip.step_idle(-1)
+        self.now += 6
+        state = self.pip.snapshot()
+        self.assertEqual((state["animation"], state["animation_elapsed"]), ("pool", 6))
+        before = self.pip.snapshot()
+        for direction in (0, 2, -2, True, False, 1.0, "1", None):
+            with self.subTest(direction=direction):
+                with self.assertRaises(ValueError):
+                    self.pip.step_idle(direction)
+                self.assertEqual(self.pip.snapshot(), before)
+
+    def test_manual_selection_never_rewrites_the_saved_playlist(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "idle.json"
+            pip = Companion(clock=lambda: self.now, idle_config_path=path)
+            config = {"actions": ["pool", "reading"], "interval": 5}
+            pip.configure_idle(**config)
+            saved = path.read_bytes()
+            pip.event("idle")
+            for direction in (1, -1, -1):
+                pip.step_idle(direction)
+            self.assertEqual(path.read_bytes(), saved)
+            self.assertEqual(pip.idle_config(), config)
+            restarted = Companion(clock=lambda: self.now, idle_config_path=path)
+            restarted.event("idle")
+            self.assertEqual(restarted.snapshot()["animation"], "pool")
+
+
 class IdlePersistenceTests(unittest.TestCase):
     def test_missing_config_defaults_then_atomic_private_save_survives_restart(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -395,6 +567,27 @@ class HttpTests(unittest.TestCase):
             response = error
         with response:
             return response.status, response.read()
+
+    def test_retro_event_and_caption_requests_bypass_rarity_and_honor_duration(self):
+        for event in ("windows_bsod", "windows_shutdown"):
+            with self.subTest(event=event):
+                status, body = self.request("/api/event", {"event": event, "duration": 12})
+                self.assertEqual(status, 200)
+                state = json.loads(body)
+                self.assertEqual((state["state"], state["animation"]), (event, event))
+                self.__class__.now += 11.5
+                self.assertEqual(self.pip.snapshot()["state"], event)
+                self.__class__.now += 0.5
+                self.assertEqual(self.pip.snapshot()["state"], "idle")
+                status, body = self.request("/api/react?mood=" + event + "&text=Hello&duration=4&text_size=80")
+                self.assertEqual(status, 200)
+                state = json.loads(body)
+                self.assertEqual((state["animation"], state["caption"], state["caption_remaining"]),
+                                 (event, "Hello", 4))
+                self.__class__.now += 4
+                state = self.pip.snapshot()
+                self.assertEqual(state["state"], "idle")
+                self.assertIsNone(state["caption"])
 
     def test_message_and_reaction_text_sizes_and_independent_clocks(self):
         status, body = self.request("/api/message", {"text": "Note", "duration": 30, "text_size": 32})

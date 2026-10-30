@@ -48,3 +48,10 @@ WEBSITE_ACTIONS = {
     "astronaut": {"file": None, "pixel": "astronaut", "label": "Float in space", "duration": 12},
     "pool": {"file": None, "pixel": "pool", "label": "Float in the pool", "duration": 12},
 }
+
+
+# Supplied retro artwork is local-only and never part of the website bake.
+RETRO_ACTIONS = {
+    "windows_bsod": {"file": "windows_bsod.png", "label": "Windows blue screen", "duration": 20},
+    "windows_shutdown": {"file": "windows_shutdown.png", "label": "Safe to turn off", "duration": 20},
+}

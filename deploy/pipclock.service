@@ -7,7 +7,7 @@ Conflicts=getty@tty1.service
 Type=simple
 User=pipclock
 Group=pipclock
-SupplementaryGroups=video render input
+SupplementaryGroups=video render input gpio
 PAMName=login
 TTYPath=/dev/tty1
 StandardInput=tty
@@ -22,6 +22,8 @@ StateDirectoryMode=0700
 Environment=PYTHONUNBUFFERED=1
 Environment=PIPCLOCK_HOST=127.0.0.1
 Environment=PIPCLOCK_IDLE_CONFIG=/var/lib/pipclock/idle.json
+Environment=PIPCLOCK_BUTTON_PREV=19
+Environment=PIPCLOCK_BUTTON_NEXT=26
 Environment=SDL_VIDEODRIVER=kmsdrm
 # VC4 exposes GLES2; SDL's desktop OpenGL framebuffer path can scan out black.
 Environment=SDL_FRAMEBUFFER_ACCELERATION=opengles2

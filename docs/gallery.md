@@ -2,7 +2,7 @@
 
 [Back to README](../README.md) · [API reaction reference](api.md#reaction-summary) · [Artwork and attribution](artwork.md)
 
-All 62 reactions, rendered by the native display renderer. Categories, order and labels match the local preview; every category uses three columns. The example clock and connected Wi-Fi icon are fixed for reproducible exports.
+All 64 reactions, rendered by the native display renderer. Categories, order and labels match the local preview; every category uses three columns. The example clock and connected Wi-Fi icon are fixed for reproducible exports; retro Windows scenes omit the clock and show a single delayed peek in each 10-second sample. Their user-provided backgrounds are visual only, never an actual crash or shutdown.
 
 <!-- BEGIN ANIMATION GALLERY -->
 ## Everyday & custom
@@ -141,6 +141,16 @@ All 62 reactions, rendered by the native display renderer. Categories, order and
   <tr>
     <td align="center" width="33%"><strong>Float in the pool</strong><br><code>pool</code><br><img src="gallery/pool.gif" alt="Animated Clawd: Float in the pool" width="300" height="225"></td>
     <td aria-hidden="true"></td>
+    <td aria-hidden="true"></td>
+  </tr>
+</table>
+
+## Retro Windows
+
+<table>
+  <tr>
+    <td align="center" width="33%"><strong>Windows blue screen</strong><br><code>windows_bsod</code><br><img src="gallery/windows_bsod.gif" alt="Animated Clawd: Windows blue screen" width="300" height="225"></td>
+    <td align="center" width="33%"><strong>Windows shutdown</strong><br><code>windows_shutdown</code><br><img src="gallery/windows_shutdown.gif" alt="Animated Clawd: Windows shutdown" width="300" height="225"></td>
     <td aria-hidden="true"></td>
   </tr>
 </table>
