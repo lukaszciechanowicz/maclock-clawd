@@ -30,13 +30,17 @@ ssh -N -o ExitOnForwardFailure=yes \
 
 The example hook URL remains `http://127.0.0.1:8765/hooks/claude`. Do not also run the Mac preview on that port. The tunnel encrypts traffic; use the same bearer token at both ends. The service account need not allow SSH: a separate provisioned SSH account can forward to Pi loopback.
 
-LAN binding is optional and requires a token:
+## Existing trusted-LAN Pi deployment
+
+The current native Pi service already accepts authenticated LAN requests. Ordinary API requests and hooks need no SSH tunnel. On this Mac, load the existing private token before starting Claude Code:
 
 ```sh
-export PIPCLOCK_TOKEN="$(openssl rand -hex 32)"
-python3 -m pipclock --fullscreen --host 0.0.0.0
+source "$HOME/Library/Application Support/maclock-clawd/api.env"
+export PIPCLOCK_TOKEN
 ```
 
-Change the hook URL to the Pi's address only if you deliberately choose LAN access. Plain HTTP does not encrypt the token or Claude payloads: prefer SSH, restrict firewall access and never expose this port to the Internet. Preview cannot be enabled with this non-loopback binding.
+In your reviewed copy of the hook settings, change each HTTP hook URL to `http://192.168.1.57:8765/hooks/claude`; retain its bearer header and `allowedEnvVars`. The example's loopback URL is suitable for the tunnel instead, not direct LAN access. Do not generate a different client token: it must match the service's configured token.
 
-For the native systemd installation, configure `PIPCLOCK_HOST` and `PIPCLOCK_TOKEN` in `/etc/pipclock.env` instead of starting a second process; see [direct LAN access](api.md#direct-lan-access-on-raspberry-pi). After setup, clients post directly to `http://PI_ADDRESS:8765/hooks/claude` with the bearer header, without an SSH session.
+Plain HTTP does not encrypt the token or complete Claude payloads. Use direct access only on a trusted LAN; prefer the encrypted tunnel on untrusted networks, and never expose port 8765 to the Internet. Preview cannot be enabled on a non-loopback bind.
+
+See the [API cookbook](api.md#client-setup-on-this-mac) for direct requests and [Raspberry Pi administration](raspberry-pi.md) for native service configuration. Do not start a second display process to configure the installed service.

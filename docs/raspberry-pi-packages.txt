@@ -1,0 +1,80 @@
+# Maclock Pi package additions: recorded APT transactions, not a portable lockfile.
+# Source: /var/log/apt/history.log on the installed original Pi Zero W.
+# Times below are Pi-local times as recorded by APT.
+# Base-image packages such as python3, locales and openssh-server are not
+# attributed to these transactions. Do not blindly install this whole list.
+
+# Native runtime/diagnostics: 2026-10-27 21:50:09 through 21:55:27.
+# 66 new packages; no upgrades or removals in this transaction.
+libvulkan1 1.4.309.0-1
+libxcb-present0 1.17.0-2
+libpulse0 17.0+dfsg1-2+rpt1
+libdrm-tests 2.4.134-3~bpo13+1+rpt1
+python3-pygame 2.6.1-1+b2
+libxrender1 1:0.9.12-1
+libglvnd0 1.7.0-1
+libsensors-config 1:3.6.2-2
+libx11-xcb1 2:1.8.12-1
+libxshmfence1 1.3.3-1
+libdecor-0-0 0.2.2-2
+libsdl2-ttf-2.0-0 2.24.0+dfsg-2
+libwayland-cursor0 1.24.0-2~bpo13+1~rpt1
+libxcb-dri3-0 1.17.0-2
+libgbm1 26.2.2-1~bpo13+0~rpt1
+libxcursor1 1:1.2.3-1
+libvorbisfile3 1.3.7-3
+libblas3 3.12.1-6
+libsdl2-image-2.0-0 2.8.8+dfsg-1+deb13u1
+libopusfile0 0.12-4+b1
+x11-common 1:7.7+24+deb13u1
+libwayland-server0 1.24.0-2~bpo13+1~rpt1
+mesa-libgallium 26.2.2-1~bpo13+0~rpt1
+libwebpdemux2 1.5.0-0.1
+libgfortran5 14.2.0-19+rpi1
+libfreetype6 2.13.3+dfsg-1+deb13u1
+libportmidi0 1:217-6.1+b1
+libllvm19 1:19.1.7-3+rpi2
+libxmp4 4.6.2-2
+libgraphite2-3 1.3.14-2+deb13u1
+libz3-4 4.13.3-1
+libxss1 1:1.2.3-1
+libgles2 1.7.0-1
+libgl1-mesa-dri 26.2.2-1~bpo13+0~rpt1
+libxrandr2 2:1.5.4-1
+libmp3lame0 3.100-6
+python3-numpy-dev 1:2.2.4+ds-1
+libopus0 1.5.2-2
+libxkbcommon0 1.13.1-1~bpo13+1+rpt1
+python3-numpy 1:2.2.4+ds-1
+libvorbisenc2 1.3.7-3
+libasyncns0 0.8-6+b4
+libsndfile1 1.2.2-2+deb13u1
+fonts-dejavu-mono 2.37-8
+libwayland-egl1 1.24.0-2~bpo13+1~rpt1
+libsdl2-2.0-0 2.32.4+dfsg-1
+libdrm-amdgpu1 2.4.134-3~bpo13+1+rpt1
+libdrm-exynos1 2.4.134-3~bpo13+1+rpt1
+libsensors5 1:3.6.2-2
+libxcb-randr0 1.17.0-2
+libharfbuzz0b 10.2.0-1+deb13u1
+fonts-freefont-ttf 20211204+svn4273-2
+fonts-dejavu-core 2.37-8
+libmpg123-0t64 1.32.10-1+deb13u1
+libegl-mesa0 26.2.2-1~bpo13+0~rpt1
+libxcb-shm0 1.17.0-2
+libegl1 1.7.0-1
+libsdl2-mixer-2.0-0 2.8.1+dfsg-2
+libdrm-tegra0 2.4.134-3~bpo13+1+rpt1
+libwayland-client0 1.24.0-2~bpo13+1~rpt1
+liblapack3 3.12.1-6
+libdrm-etnaviv1 2.4.134-3~bpo13+1+rpt1
+libxcb-sync1 1.17.0-2
+libxfixes3 1:6.0.0-2+b1
+libxi6 2:1.8.2-1
+libxcb-xfixes0 1.17.0-2
+
+# Font discovery: 2026-10-27 21:59:18 through 22:00:06.
+# Three additional new packages.
+fontconfig 2.15.0-2.3
+libfontconfig1 2.15.0-2.3
+fontconfig-config 2.15.0-2.3

@@ -1,31 +1,80 @@
 # API
 
-[Back to README](../README.md) · [Animation gallery](gallery.md) · [Claude Code integration](claude-code.md)
+[Back to README](../README.md) · [Animation gallery](gallery.md) · [Claude Code integration](claude-code.md) · [Raspberry Pi administration](raspberry-pi.md)
 
-These examples use the default token-free loopback development server:
+## Client setup on this Mac
+
+The deployed Pi accepts ordinary HTTP requests directly over the LAN; **no SSH or sudo is needed**. In a Bash or Zsh terminal, load the existing private token file and choose the destination:
 
 ```sh
-curl http://127.0.0.1:8765/health
-curl http://127.0.0.1:8765/api/state
-
-curl -X POST http://127.0.0.1:8765/api/event \
-  -H 'Content-Type: application/json' \
-  -d '{"event":"dance","duration":12}'
-
-curl -X POST http://127.0.0.1:8765/api/message \
-  -H 'Content-Type: application/json' \
-  -d '{"text":"Build finished. Time for a stretch!","duration":30,"text_size":80}'
-
-curl -X POST http://127.0.0.1:8765/api/event \
-  -H 'Content-Type: application/json' \
-  -d '{"event":"idle"}'
-
-curl --get http://127.0.0.1:8765/api/react \
-  --data-urlencode 'mood=cloud_engineering' \
-  --data-urlencode 'text=Hello, Cloud Engineering!' \
-  --data-urlencode 'duration=20' \
-  --data-urlencode 'text_size=64'
+source "$HOME/Library/Application Support/maclock-clawd/api.env"
+export PIPCLOCK_TOKEN
+export PIPCLOCK_URL="${PIPCLOCK_URL:-http://192.168.1.57:8765}"
 ```
+
+Keep that file private (mode `0600`); never print its contents, commit it, or put the token in a URL. `PIPCLOCK_URL` can instead point to a local development server, such as `http://127.0.0.1:8765`. A token-free loopback server does not require sourcing the file; its API accepts requests without a bearer header. All examples below target the configured URL.
+
+`curl -q` must be the first curl option: it ignores `~/.curlrc`, including custom timing/metrics output that would otherwise contaminate JSON. `--fail-with-body` preserves API error JSON and returns a nonzero exit status for HTTP errors.
+
+## Cookbook
+
+### Health and current snapshot
+
+```sh
+# Public liveness check; the native Pi normally reports preview: false.
+curl -q --silent --show-error --fail-with-body "$PIPCLOCK_URL/health"
+
+# Authenticated state, formatted with Python's standard library.
+curl -q --silent --show-error --fail-with-body "$PIPCLOCK_URL/api/state" \
+  -H "Authorization: Bearer $PIPCLOCK_TOKEN" | python3 -m json.tool
+```
+
+`state` is the **logical mode**, not always the picture on screen. During idle rotation it remains `"idle"` while `animation` might be `"pool"` or `"reading"`. `elapsed` measures logical event time; `animation_elapsed` measures the current pose time (reset at playlist boundaries, except a one-action playlist plays continuously). `message` and `caption` are separate strings or `null`; each has its own `*_remaining`, `*_elapsed` in seconds and `*_text_size` in pixels. No event-remaining field is returned. On startup Clawd waves for eight seconds before entering idle.
+
+### Play an event, then return to idle
+
+```sh
+curl -q --silent --show-error --fail-with-body "$PIPCLOCK_URL/api/event" \
+  -H "Authorization: Bearer $PIPCLOCK_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data '{"event":"dance","duration":12}'
+
+curl -q --silent --show-error --fail-with-body "$PIPCLOCK_URL/api/event" \
+  -H "Authorization: Bearer $PIPCLOCK_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data '{"event":"idle"}'
+```
+
+### Short and scrolling messages
+
+```sh
+curl -q --silent --show-error --fail-with-body "$PIPCLOCK_URL/api/message" \
+  -H "Authorization: Bearer $PIPCLOCK_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data '{"text":"Cześć! Build finished.","duration":20,"text_size":80}'
+
+curl -q --silent --show-error --fail-with-body "$PIPCLOCK_URL/api/message" \
+  -H "Authorization: Bearer $PIPCLOCK_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data '{"text":"Cloud Engineering: deployment complete.\nTime for coffee, a stretch, and a well-earned break!","duration":60,"text_size":64}'
+```
+
+The second example uses a JSON `\n` escape, not a literal newline inside the JSON string. It displays as a space in the single-line ticker. A message replaces the previous message but does not change the animation.
+
+### Choose a mood and caption together
+
+```sh
+curl -q --silent --show-error --fail-with-body --get "$PIPCLOCK_URL/api/react" \
+  -H "Authorization: Bearer $PIPCLOCK_TOKEN" \
+  --data-urlencode 'mood=cloud_engineering' \
+  --data-urlencode 'text=Cześć, Cloud Engineering! Build #42: A+B & ready.' \
+  --data-urlencode 'duration=20' \
+  --data-urlencode 'text_size=80'
+```
+
+Use `--data-urlencode` for each query value; manual concatenation breaks spaces, `+`, `&`, `#` and UTF-8 text. This request changes the animation and caption atomically.
+
+## Endpoint reference
 
 | Endpoint | Behavior |
 | --- | --- |
@@ -64,15 +113,26 @@ Idle is a logical mode, not necessarily the standard standing pose. Every 30 sec
 Configure any nonempty list of distinct names from the reaction table; the order is preserved and repeated round-robin:
 
 ```sh
-curl http://127.0.0.1:8765/api/idle
+curl -q --silent --show-error --fail-with-body "$PIPCLOCK_URL/api/idle" \
+  -H "Authorization: Bearer $PIPCLOCK_TOKEN"
 
-curl http://127.0.0.1:8765/api/idle \
+# Replace the entire playlist: all six core moods, plus coffee, kite and swaying.
+curl -q --silent --show-error --fail-with-body "$PIPCLOCK_URL/api/idle" \
+  -H "Authorization: Bearer $PIPCLOCK_TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"actions":["idle","pool","skate","headphones","sleeping","reading"],"interval":30}'
+  --data '{"actions":["idle","pool","skate","headphones","sleeping","reading","coffee","kite","swaying"],"interval":30}'
 
-curl http://127.0.0.1:8765/api/event \
+# Disable rotation, not the display: keep the standing pose continuously.
+curl -q --silent --show-error --fail-with-body "$PIPCLOCK_URL/api/idle" \
+  -H "Authorization: Bearer $PIPCLOCK_TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"event":"idle"}'
+  --data '{"actions":["idle"],"interval":30}'
+
+# Interrupt an explicit event and start the configured playlist now.
+curl -q --silent --show-error --fail-with-body "$PIPCLOCK_URL/api/event" \
+  -H "Authorization: Bearer $PIPCLOCK_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data '{"event":"idle"}'
 ```
 
 `GET` and `POST /api/idle` return the configuration directly. `interval` accepts finite numbers from 5 to 3600 seconds, including fractions. A single selected action plays continuously without pose resets; use `{"actions":["idle"],"interval":30}` to keep only the standard standing Clawd.
@@ -83,7 +143,7 @@ Explicit events/reactions/hooks interrupt the playlist. Their expiry restarts id
 
 On the native Pi service, configuration is saved atomically in `/var/lib/pipclock/idle.json`, under the private systemd state directory, and loaded after restarts. Desktop previews are in-memory unless `PIPCLOCK_IDLE_CONFIG` names a settings file. Invalid persisted configuration fails startup explicitly. Invalid requests return HTTP 400 without mutation; a persistence failure returns HTTP 500 and keeps the previous configuration.
 
-The preview also exposes text-size controls and an idle-group picker. LAN clients use the same endpoints with the bearer header shown below; no SSH is required.
+The preview also exposes text-size controls and an idle-group picker. Only the playlist configuration persists: events, messages, captions, elapsed times and the current playlist position do not survive a process restart. Playlist entries use the configured interval, **not** their event-default durations.
 
 
 ## Reaction summary
@@ -157,61 +217,92 @@ All **62 mood/event names** work with both `POST /api/event` and `GET /api/react
 
 The lens is theatrical animation only: **no camera, microphone or room sensing**. Explicit actions replay when sent again; repeated `thinking` events instead extend the watchdog without resetting its motion. The scared sequence repeats within its active duration; its default duration includes a complete exit and return. `deal_with_it` drops its glasses once per event and holds the result rather than repeatedly dropping them. Unknown event names receive HTTP 400; there are no compatibility aliases for removed actions.
 
-```sh
-curl http://127.0.0.1:8765/api/event \
-  -H 'Content-Type: application/json' \
-  -d '{"event":"coffee","duration":12}'
-```
+An omitted or JSON `null` event duration selects its table default. Explicit numeric durations must be greater than zero and at most 3600 seconds; fractions are allowed, but booleans and numeric strings are not. For `idle`, a supplied duration is validated but does not stop the playlist. Reacting with `mood=idle` starts the playlist immediately while keeping the caption for its requested duration.
 
 Blank text and control characters other than newlines are rejected. Unicode glyph coverage depends on locally installed fonts; missing scripts or emoji may display replacement boxes.
 
-## Authentication and request limits
+## Standard-library Python client
 
-All POSTs require `Content-Type: application/json`; bodies are limited to 16 KiB and malformed input is rejected. There is no CORS support. For authentication, set `PIPCLOCK_TOKEN` in the server environment and add `Authorization: Bearer ...` to API/hook requests:
-
-```sh
-export PIPCLOCK_TOKEN="$(openssl rand -hex 32)"
-.venv/bin/python -m pipclock --headless --preview
-# In another terminal, set the same token before making requests:
-curl http://127.0.0.1:8765/api/state \
-  -H "Authorization: Bearer ${PIPCLOCK_TOKEN}"
-```
-
-The token protects `/api/*` and `/hooks/*`, not `/health` or the loopback-only preview. Enter the token into the browser mirror's password field when needed; it is not embedded in HTML. Loopback is not authentication against other processes/users on the same machine.
-
-## Direct LAN access on Raspberry Pi
-
-The native systemd service defaults to `127.0.0.1:8765`. To accept requests directly from other devices, edit `/etc/pipclock.env` with `sudoedit`:
-
-- Set `PIPCLOCK_HOST=0.0.0.0` to listen on the Pi's network interfaces.
-- Set `PIPCLOCK_TOKEN` to a random secret, generated with `openssl rand -hex 32`. Keep this file owned by root with mode `0600`.
-- Install the current `deploy/pipclock.service`, run `sudo systemctl daemon-reload`, then `sudo systemctl restart pipclock.service`.
-
-The app refuses a non-loopback bind without a token. The service binds before Wi-Fi receives its address, so no fixed IP is needed in its configuration. Use a DHCP reservation if clients need a stable Pi address.
-
-On each client, store the same token privately as `PIPCLOCK_TOKEN`. Once configured, normal requests need neither SSH nor sudo:
+Run the client setup above first: `export PIPCLOCK_TOKEN` is required because a sourced shell variable is not necessarily inherited by Python. This example uses only the Python standard library, encodes UTF-8 JSON/query values correctly, and never prints the token:
 
 ```sh
-curl -fsS http://192.168.1.57:8765/api/event \
-  -H "Authorization: Bearer ${PIPCLOCK_TOKEN}" \
-  -H 'Content-Type: application/json' \
-  -d '{"event":"dance","duration":20}'
+python3 - <<'PY'
+import json
+import os
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
-curl -fsS http://192.168.1.57:8765/api/message \
-  -H "Authorization: Bearer ${PIPCLOCK_TOKEN}" \
-  -H 'Content-Type: application/json' \
-  -d '{"text":"Cześć z sieci!","duration":30,"text_size":80}'
+base = os.environ.get("PIPCLOCK_URL", "http://192.168.1.57:8765").rstrip("/")
+token = os.environ["PIPCLOCK_TOKEN"]
 
-curl --get --fail-with-body http://192.168.1.57:8765/api/react \
-  -H "Authorization: Bearer ${PIPCLOCK_TOKEN}" \
-  --data-urlencode 'mood=wave' \
-  --data-urlencode 'text=Cześć!' \
-  --data-urlencode 'duration=20' \
-  --data-urlencode 'text_size=80'
+def request(path, payload=None):
+    headers = {"Authorization": "Bearer " + token}
+    data = None
+    if payload is not None:
+        headers["Content-Type"] = "application/json"
+        data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    req = Request(base + path, data=data, headers=headers)
+    try:
+        with urlopen(req, timeout=10) as response:
+            body = response.read()
+            return json.loads(body) if body else None
+    except HTTPError as error:
+        raise SystemExit(f"HTTP {error.code}: {error.read().decode('utf-8')}")
+    except URLError as error:
+        raise SystemExit(f"Connection failed: {error.reason}")
+
+print(json.dumps(request("/api/state"), ensure_ascii=False, indent=2))
+request("/api/message", {"text": "Cześć z Pythona!", "duration": 30, "text_size": 80})
+query = urlencode({"mood": "wave", "text": "Hello + cześć & welcome!",
+                   "duration": 12, "text_size": 64})
+print(json.dumps(request("/api/react?" + query), ensure_ascii=False, indent=2))
+PY
 ```
 
-To diagnose connectivity separately from authentication, run `curl -fsS http://192.168.1.57:8765/health` from the client. It should return `{"status": "ok", "preview": false}`; then verify that an unauthenticated `/api/state` returns HTTP 401 and the same request with the bearer header succeeds.
+## Authentication, limits and errors
 
-`GET /health` remains unauthenticated; `/api/*` and `/hooks/*` return HTTP 401 without the correct bearer token. Preview pages and JPEGs are not enabled by this LAN configuration. Browser cross-origin requests are still unsupported; this is intended for CLI, scripts and server-to-server callers.
+All `/api/*` and `/hooks/*` routes require the exact `Authorization: Bearer ...` header when the server has `PIPCLOCK_TOKEN` configured. `/health` is public. A non-loopback bind requires a token; loopback may be token-free, but loopback alone does not protect against other local processes/users. Never send a token in query parameters.
 
-Plain HTTP does **not** encrypt the token or message. Use only on a trusted LAN, do not forward port 8765 from the Internet, and use an encrypted connection for untrusted networks.
+All POSTs require a JSON object and `Content-Type: application/json` (an optional charset is accepted). Bodies must contain 1–16384 bytes; chunked transfer encoding is unsupported. JSON fields not used by the selected endpoint are ignored; `/api/react` instead strictly rejects unknown or duplicate query parameters and requires `mood` and `text`.
+
+| Status | Meaning |
+| --- | --- |
+| `200` | Successful API request; event/message/react return a snapshot, idle returns the configuration. |
+| `204` | Recognized Claude hook accepted, with no response body. |
+| `400` | Invalid JSON, fields, action, text, duration, text size, playlist or reaction query; unsupported hook or chunked request. Validation failures do not change the current display/configuration. |
+| `401` | Missing or incorrect bearer token. |
+| `403` | Cross-origin reaction request rejected. |
+| `404` | Unknown route, or preview route when preview is disabled. |
+| `408` | Request body timed out (connection timeout is five seconds). |
+| `413` | Missing, invalid, zero or oversized body length. |
+| `415` | POST content type is not `application/json`. |
+| `500` | Idle configuration could not be persisted; previous configuration is retained. |
+| `503` | Preview enabled, but its first JPEG is not ready yet. |
+
+There is no CORS support. In particular `/api/react` rejects foreign `Origin` and cross-site fetch headers even in token-free loopback mode. CLI/script/server-to-server requests and same-origin preview controls are supported; remote web pages are not. Reaction query text may appear in URL history, so do not send secrets.
+
+Preview is opt-in (`--preview`) and restricted to loopback binds. Its HTML/JPEG routes are not bearer-protected; the HTML does not embed the API token. Enter the token in its password field when required. The native LAN service has preview disabled; `/` and `/frame.jpg` therefore return 404 rather than exposing a remote mirror. See [Raspberry Pi administration](raspberry-pi.md) for service configuration, deployment, SSH and display diagnostics.
+
+Plain HTTP does **not** encrypt tokens or text. Use only a trusted LAN; do not forward port 8765 from the Internet. Use an encrypted connection on untrusted networks.
+
+### Troubleshooting from the Mac
+
+```sh
+# Check reachability without involving authentication.
+curl -q --silent --show-error --fail-with-body --connect-timeout 5 "$PIPCLOCK_URL/health"
+
+# Deliberately omit authentication: the deployed Pi should return HTTP 401.
+curl -q --silent --show-error --include "$PIPCLOCK_URL/api/state"
+
+# Now authenticate; do not use curl -v or shell tracing with private headers.
+curl -q --silent --show-error --fail-with-body "$PIPCLOCK_URL/api/state" \
+  -H "Authorization: Bearer $PIPCLOCK_TOKEN"
+```
+
+- **curl error 7 (failed to connect):** no HTTP response was received. Check the Pi's current IP, port, LAN/Wi-Fi reachability and whether its service is listening. A wrong token cannot cause connection refusal. Use the host administration guide for service-side investigation.
+- **HTTP 401:** the server is reachable, but the token is missing or does not match. Re-source the private client file in this terminal; ensure it matches the service's private token through the documented administration process, without printing either secret.
+- **HTTP 400:** read the returned `error` JSON; check action spelling, required duration for messages, integer text size and encoded query parameters.
+- **JSON followed by timing/metrics:** ensure `-q` is the first curl option; it disables custom `~/.curlrc` output.
+- **Text expires before the full line passes:** increase duration (up to 3600 seconds), or shorten the text. Scrolling never extends expiry.
+- **Healthy API but blank panel:** liveness is not a display scanout test; use the Pi guide's display/service diagnostics.

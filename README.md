@@ -23,7 +23,8 @@ Keep the process running; stop it with Ctrl-C. If the browser reports `ERR_CONNE
 | Guide | Contents |
 | --- | --- |
 | [Animation gallery](docs/gallery.md) | All 62 animated GIFs, grouped like the preview and arranged three per row. |
-| [API reference](docs/api.md) | Endpoints, mood + text captions, timed notes, authentication and the full reaction table. |
+| [API cookbook and reference](docs/api.md) | Copy/paste LAN curl and Python examples, text sizes/scrolling, idle configuration, authentication and all 62 reactions. |
+| [Raspberry Pi configuration and operations](docs/raspberry-pi.md) | Recorded SD/boot, display, USB/SSH, locale and package changes; native service, secrets, deployment, backups and troubleshooting. |
 | [Claude Code integration](docs/claude-code.md) | Opt-in lifecycle hooks, event mappings and secure connections. |
 | [Artwork and attribution](docs/artwork.md) | Source credits, rights notices and rebuilding the animations/gallery. |
 
@@ -42,12 +43,4 @@ Clawd and website artwork © Anthropic. Unofficial project; brand marks belong t
 
 **Native display output has been exercised on a Pi Zero W running Raspberry Pi OS Trixie with the Waveshare 2.8-inch DPI panel.** The [systemd unit](deploy/pipclock.service) renders directly through KMSDRM, without a desktop or browser, and starts at boot.
 
-The unit expects the source in `/opt/maclock-clawd`, distro `python3-pygame` 2.6.1, `libgbm1`, `libegl1`, `libgles2`, `libgl1-mesa-dri`, `fontconfig` and `fonts-dejavu-core`. Its `pipclock` system account needs the `video`, `render` and `input` groups; the service takes over `tty1` from getty.
-
-The service defaults to loopback. For direct LAN requests without SSH, set `PIPCLOCK_HOST=0.0.0.0` and a strong `PIPCLOCK_TOKEN` in the root-readable `/etc/pipclock.env`, then restart the service. Clients use the Pi's IP and a bearer header; see [LAN setup and examples](docs/api.md#direct-lan-access-on-raspberry-pi). The browser preview remains local-only.
-
-The native service saves idle settings in `/var/lib/pipclock/idle.json` using its private systemd state directory. Desktop settings remain in-memory unless `PIPCLOCK_IDLE_CONFIG` is set. See [idle configuration](docs/api.md#idle-playlist) and the [text API](docs/api.md#reaction--overhead-text) for bounds and examples.
-
-The unit explicitly selects `SDL_FRAMEBUFFER_ACCELERATION=opengles2` for VC4. SDL's automatic desktop OpenGL framebuffer renderer can otherwise produce an all-black scanout despite a healthy API and a correctly drawn CPU-side surface; verify the actual DRM framebuffer when diagnosing a blank panel.
-
-`--rotation 90` maps the logical 640 × 480 scene onto the panel's native 480 × 640 pixels. Angles are counterclockwise; use `270` for the opposite mounting, `180` for an upside-down landscape panel, or the default `0` for a normal landscape display. Browser previews stay landscape. The `--fps` setting is a ceiling, not a guaranteed rate on the original Pi Zero W.
+The installed Pi exposes its bearer-authenticated API directly on the trusted LAN. Use the [API cookbook](docs/api.md#client-setup-on-this-mac) for requests without SSH, and the [Pi runbook](docs/raspberry-pi.md) for the complete host configuration, change history and administrative commands.
