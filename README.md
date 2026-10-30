@@ -1,8 +1,16 @@
 # Maclock Clawd: a desk companion
 
+![Maclock Clawd on a desk, showing a sleeping Clawd beneath the calculator-style clock.](docs/images/desk-companion.jpg)
+
 An animated Clawd and calculator-style clock for a **640 × 480 landscape screen**. Built for a Raspberry Pi Zero W inside a Maclock enclosure, with a Mac preview for trying all 64 reactions before touching the hardware.
 
+Opt-in hooks let Clawd react to **Claude Code, Codex and OMP**: thinking when work begins, waiting for input and celebrating when a response finishes. The local HTTP API also controls reactions, captions and scrolling messages.
+
 **Some of the animations are my own custom creations, made specifically for this project. Other animations use the animation library from [claude.dev](https://claude.dev/). That library was the inspiration for this project's animation style and Clawd's movement.**
+
+**Explore:** [Animation gallery — all 64 reactions](docs/gallery.md) · [Watch the demo on YouTube](https://www.youtube.com/watch?v=3HgPzPIy_u0)
+
+**Project story:** [Meet Clawd: a tiny desk companion for my coding agents](https://notes.ciechanowi.cz/notes/maclock-clawd/)
 
 ## Quick start on Mac
 
