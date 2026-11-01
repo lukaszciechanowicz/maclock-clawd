@@ -92,6 +92,21 @@ curl -q --silent --show-error --fail-with-body "$PIPCLOCK_URL/api/message" \
 
 The second example uses a JSON `\n` escape, not a literal newline inside the JSON string. It displays as a space in the single-line ticker. A message replaces the previous message but does not change the animation.
 
+### Bash script: wave with your text
+
+From the repository root, load and export the API token, then pass the text as one quoted argument:
+
+```sh
+source "$HOME/Library/Application Support/maclock-clawd/api.env"
+export PIPCLOCK_TOKEN
+bash examples/clawd-wave.sh "Hello"
+bash examples/clawd-wave.sh "Cześć! Build #42: A+B & ready."
+```
+
+The script sends one `/api/react` request with `mood=wave`, displaying the text above Clawd while he waves for **8 seconds**. Text must contain 1–280 characters and must not be blank. Query values are URL-encoded, including spaces, quotes, `&`, `+`, `#` and Unicode.
+
+The default destination is `http://maclock.internal.krosno.cloud:8765`; export `PIPCLOCK_URL` to use another instance. The script prints the API's JSON response and exits nonzero for request errors.
+
 ### Choose a mood and caption together
 
 ```sh
