@@ -1,27 +1,6 @@
-# Photo and animation gallery
+# Animation gallery
 
 [Back to README](../README.md) · [API reaction reference](api.md#reaction-summary) · [Artwork and attribution](artwork.md)
-
-## Project photos
-
-Maclock on a shelf, homelab hardware and woodworking projects.
-
-<table>
-  <tr>
-    <td align="center" width="50%"><a href="images/maclock-on-shelf.jpg"><img src="images/maclock-on-shelf.jpg" alt="Maclock displaying a terminal on a bookshelf beside a model car" width="400"></a><br>Maclock on the shelf</td>
-    <td align="center" width="50%"><a href="images/homelab-rack.jpg"><img src="images/homelab-rack.jpg" alt="Homelab rack with networking equipment and an AWS sticker" width="400"></a><br>Homelab rack</td>
-  </tr>
-  <tr>
-    <td align="center" width="50%"><a href="images/rack-server-workbench.jpg"><img src="images/rack-server-workbench.jpg" alt="Rack server chassis held on a workshop bench" width="400"></a><br>Server on the workbench</td>
-    <td align="center" width="50%"><a href="images/wooden-sofa-arm-table.jpg"><img src="images/wooden-sofa-arm-table.jpg" alt="Wooden sofa arm table holding a mug beside a grey cushion" width="400"></a><br>Sofa arm table</td>
-  </tr>
-  <tr>
-    <td align="center" width="50%"><a href="images/wooden-shelf-build.jpg"><img src="images/wooden-shelf-build.jpg" alt="Wooden shelf components being assembled on a workshop bench" width="400"></a><br>Shelf build</td>
-    <td align="center" width="50%"><a href="images/wooden-shelf-assembled.jpg"><img src="images/wooden-shelf-assembled.jpg" alt="Assembled wooden shelf standing on a workshop bench" width="400"></a><br>Assembled shelf</td>
-  </tr>
-</table>
-
-## Animations
 
 All 64 reactions, rendered by the native display renderer. Categories, order and labels match the local preview; every category uses three columns. The example clock and connected Wi-Fi icon are fixed for reproducible exports; retro Windows scenes omit the clock and show a single delayed peek in each 10-second sample. Their user-provided backgrounds are visual only, never an actual crash or shutdown.
 
