@@ -10,7 +10,7 @@ Opt-in hooks let Maclock Clawd react to **Claude Code, Codex and OMP**: thinking
 
 **Some of the animations are my own custom creations, made specifically for this project. Other animations use the animation library from [claude.dev](https://claude.dev/). That library was the inspiration for this project's animation style and Maclock Clawd's movement.**
 
-**Explore:** [Animation gallery — all 64 reactions](docs/gallery.md)
+**Explore:** [Photo and animation gallery — project photos and all 64 reactions](docs/gallery.md)
 
 **Project story:** [Meet Maclock Clawd: a tiny desk companion for my coding agents](https://notes.ciechanowi.cz/notes/maclock-clawd/)
 
@@ -89,7 +89,7 @@ The normal desktop install above remains pygame-only; it does not require GPIO l
 
 | Guide | Contents |
 | --- | --- |
-| [Animation gallery](docs/gallery.md) | All 64 animated GIFs, grouped like the preview and arranged three per row. |
+| [Photo and animation gallery](docs/gallery.md) | Project photos and all 64 animated GIFs, grouped like the preview and arranged three per row. |
 | [API cookbook and reference](docs/api.md) | Copy/paste LAN curl and Python examples, text sizes/scrolling, idle configuration, authentication and all 64 reactions. |
 | [Raspberry Pi configuration and operations](docs/raspberry-pi.md) | Recorded SD/boot, display, USB/SSH, locale and package changes; native service, secrets, deployment, backups and troubleshooting. |
 | [Assistant hook integrations](docs/hooks.md) | Separate [Claude Code](docs/hooks.md#claude-code), [Codex](docs/hooks.md#codex) and [OMP](docs/hooks.md#omp) setup, activity mappings and Finished completion choices. |
